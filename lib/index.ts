@@ -29,7 +29,6 @@ export async function shaclStoreToShexSchema(shapeStore: Store) {
                 continue;
             }
             const shape = shapeFromDataset(ShapeShapeShapeType, shapeStore, property);
-            const nodeKind = shapeStore.getObjects(property, namedNode('http://www.w3.org/ns/shacl#nodeKind'), defaultGraph());
             const inValues = shapeStore.getObjects(property, namedNode('http://www.w3.org/ns/shacl#in'), defaultGraph());
             const shapeRef = shapeStore.getObjects(property, namedNode('http://www.w3.org/ns/shacl#node'), defaultGraph());
 
@@ -44,15 +43,17 @@ export async function shaclStoreToShexSchema(shapeStore: Store) {
               "type": "NodeConstraint",
             }
 
-            if (nodeKind.length === 1) {
-              let kind = nodeKind[0].value.split('#')[1].toLowerCase();
-              if (kind === 'blanknodeoriri') {
-                kind = 'nonliteral';
-              } else if (kind !== 'iri' && kind !== 'literal' && kind !== 'blanknode') {
-                console.warn('Unsupported nodeKind', kind);
-                continue;
+            if (shape.nodeKind) {
+              const val = {
+                'IRI': 'iri',
+                'Literal': 'literal',
+                'BlankNode': 'bnode',
+                'BlankNodeOrIRI': 'nonliteral',
+              }[shape.nodeKind['@id'].replace('http://www.w3.org/ns/shacl#', '')];
+
+              if (val) {
+                valueExpr.nodeKind = val;
               }
-              valueExpr.nodeKind = kind;
             }
             if (inValues.length === 1) {
               const list = shapeStore.extractLists()[inValues[0].value];

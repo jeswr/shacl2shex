@@ -17,7 +17,7 @@
     "lint": "eslint lib/* __tests__/* --ext .ts",
     "lint:fix": "eslint lib/* __tests__/* --ext .ts --fix",
     "fetch:shape": "ts-node scripts/getShapeShape",
-    "ldo": "ldo build --input ./scripts --output ./lib/ldo",
+    "ldo": "ldo build --input ./scripts --output ./ldo",
     "build": "tsc",
     "prepare": "tsc",
     "semantic-release": "semantic-release"
