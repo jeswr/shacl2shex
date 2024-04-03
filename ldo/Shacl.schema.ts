@@ -58,16 +58,6 @@ export const ShaclSchema: Schema = {
             },
             {
               type: "TripleConstraint",
-              predicate: "http://www.w3.org/ns/shacl#deactivated",
-              valueExpr: {
-                type: "NodeConstraint",
-                nodeKind: "literal",
-              },
-              min: 0,
-              max: 1,
-            },
-            {
-              type: "TripleConstraint",
               predicate: "http://www.w3.org/ns/shacl#class",
               valueExpr: {
                 type: "NodeConstraint",
@@ -221,7 +211,14 @@ export const ShaclSchema: Schema = {
               predicate: "http://www.w3.org/ns/shacl#nodeKind",
               valueExpr: {
                 type: "NodeConstraint",
-                nodeKind: "iri",
+                values: [
+                  "http://www.w3.org/ns/shacl#BlankNode",
+                  "http://www.w3.org/ns/shacl#IRI",
+                  "http://www.w3.org/ns/shacl#Literal",
+                  "http://www.w3.org/ns/shacl#BlankNodeOrIRI",
+                  "http://www.w3.org/ns/shacl#BlankNodeOrLiteral",
+                  "http://www.w3.org/ns/shacl#IRIOrLiteral",
+                ],
               },
               min: 0,
               max: 1,

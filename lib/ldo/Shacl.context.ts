@@ -25,9 +25,6 @@ export const ShaclContext: ContextDefinition = {
     "@id": "http://www.w3.org/ns/shacl#severity",
     "@type": "@id",
   },
-  deactivated: {
-    "@id": "http://www.w3.org/ns/shacl#deactivated",
-  },
   class: {
     "@id": "http://www.w3.org/ns/shacl#class",
     "@type": "@id",
@@ -91,8 +88,13 @@ export const ShaclContext: ContextDefinition = {
   },
   nodeKind: {
     "@id": "http://www.w3.org/ns/shacl#nodeKind",
-    "@type": "@id",
   },
+  BlankNode: "http://www.w3.org/ns/shacl#BlankNode",
+  IRI: "http://www.w3.org/ns/shacl#IRI",
+  Literal: "http://www.w3.org/ns/shacl#Literal",
+  BlankNodeOrIRI: "http://www.w3.org/ns/shacl#BlankNodeOrIRI",
+  BlankNodeOrLiteral: "http://www.w3.org/ns/shacl#BlankNodeOrLiteral",
+  IRIOrLiteral: "http://www.w3.org/ns/shacl#IRIOrLiteral",
   pattern: {
     "@id": "http://www.w3.org/ns/shacl#pattern",
     "@type": "http://www.w3.org/2001/XMLSchema#string",

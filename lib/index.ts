@@ -59,18 +59,18 @@ export async function shaclStoreToShexSchema(shapeStore: Store) {
               const list = shapeStore.extractLists()[inValues[0].value];
               if (list) {
                 // FIXME, make this work for literals
-                // if (list.every(v => v.termType === 'NamedNode'))
-                //   valueExpr.values = list.map(v => v.value);
+                if (list.every(v => v.termType === 'NamedNode'))
+                  valueExpr.values = list.map(v => v.value);
 
-                if (list.every(v => v.termType === 'Literal')) {
-                  valueExpr.nodeKind = 'literal';
-                } else if (list.every(v => v.termType === 'NamedNode')) {
-                  valueExpr.nodeKind = 'iri';
-                } else if (list.every(v => v.termType === 'BlankNode')) {
-                  valueExpr.nodeKind = 'bnode';
-                } else if (list.every(v => v.termType !== 'Literal')) {
-                  valueExpr.nodeKind = 'nonliteral';
-                }
+                // if (list.every(v => v.termType === 'Literal')) {
+                //   valueExpr.nodeKind = 'literal';
+                // } else if (list.every(v => v.termType === 'NamedNode')) {
+                //   valueExpr.nodeKind = 'iri';
+                // } else if (list.every(v => v.termType === 'BlankNode')) {
+                //   valueExpr.nodeKind = 'bnode';
+                // } else if (list.every(v => v.termType !== 'Literal')) {
+                //   valueExpr.nodeKind = 'nonliteral';
+                // }
               }
             }
 
@@ -79,7 +79,7 @@ export async function shaclStoreToShexSchema(shapeStore: Store) {
             } else if (shapeRef.length === 1) {
                 // TODO: Error if there are any other constraints
                 valueExpr = shapeRef[0].value;
-            } else if (valueExpr.nodeKind) {
+            } else if (valueExpr.nodeKind || valueExpr.values) {
 
             }  else {
                 console.warn('Unsupported property', property);
