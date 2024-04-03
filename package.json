@@ -97,7 +97,7 @@
   },
   "dependencies": {
     "@ldo/ldo": "^0.0.1-alpha.24",
-    "@rdfjs/term-set": "^2.0.2",
+    "@rdfjs/term-set": "^1.1.0",
     "@rdfjs/types": "^1.1.0",
     "@shexjs/writer": "^1.0.0-alpha.27",
     "rdf-namespaces": "^1.12.0"

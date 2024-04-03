@@ -1,31 +1,36 @@
-import { DatasetCore } from '@rdfjs/types';
+import { DatasetCore, Term } from '@rdfjs/types';
 import { rdf } from "rdf-namespaces";
 import { DataFactory, Store } from 'n3';
 import { ShapeShapeShapeType } from "./ldo/Shacl.shapeTypes";
 import Writer from "@shexjs/writer";
-import { shapeMatches } from './shapeFromDataset';
+import { shapeFromDataset, shapeMatches } from './shapeFromDataset';
 const { namedNode, defaultGraph } = DataFactory;
 
-export async function shaclStoreToShexSchema(shapeStore: DatasetCore) {
-    const shexShapes = [];
-    for (const shape of shapeMatches(ShapeShapeShapeType, shapeStore)) {
-        shape.
+function getSingleObjectOfType(store: DatasetCore, subject: Term, predicate: Term) {
+    const objects = [...store.match(subject, predicate, null, defaultGraph())];
+    if (objects.length !== 1) {
+        console.warn('Expected exactly one object', objects);
+        return;
     }
-    
-    
-    
-    for (const shape of shapeStore.match(null, namedNode(rdf.type), namedNode('http://www.w3.org/ns/shacl#NodeShape'), defaultGraph())) {
+    if (objects[0].object.termType !== 'NamedNode') {
+        console.warn('Expected object to be a NamedNode', objects[0]);
+        return;
+    }
+    return objects[0].object;
+}
+
+export async function shaclStoreToShexSchema(shapeStore: Store) {
+    const shexShapes = [];    
+    for (const { subject: shape } of shapeStore.match(null, namedNode(rdf.type), namedNode('http://www.w3.org/ns/shacl#NodeShape'), defaultGraph())) {
         const eachOf = [];
         for (const property of shapeStore.getObjects(shape, namedNode('http://www.w3.org/ns/shacl#property'), defaultGraph())) {
-            const minCount = shapeStore.getObjects(property, namedNode('http://www.w3.org/ns/shacl#minCount'), defaultGraph());
-            const maxCount = shapeStore.getObjects(property, namedNode('http://www.w3.org/ns/shacl#maxCount'), defaultGraph());
-            const datatype = shapeStore.getObjects(property, namedNode('http://www.w3.org/ns/shacl#datatype'), defaultGraph());
+            if (property.termType !== 'NamedNode' && property.termType !== 'BlankNode') {
+                console.warn('Unsupported property', property);
+                continue;
+            }
+            const shape = shapeFromDataset(ShapeShapeShapeType, shapeStore, property);
             const nodeKind = shapeStore.getObjects(property, namedNode('http://www.w3.org/ns/shacl#nodeKind'), defaultGraph());
-            const pattern = shapeStore.getObjects(property, namedNode('http://www.w3.org/ns/shacl#pattern'), defaultGraph());
-            const minLength = shapeStore.getObjects(property, namedNode('http://www.w3.org/ns/shacl#minLength'), defaultGraph());
-            const maxLength = shapeStore.getObjects(property, namedNode('http://www.w3.org/ns/shacl#maxLength'), defaultGraph());
             const inValues = shapeStore.getObjects(property, namedNode('http://www.w3.org/ns/shacl#in'), defaultGraph());
-            const hasValue = shapeStore.getObjects(property, namedNode('http://www.w3.org/ns/shacl#hasValue'), defaultGraph());
             const shapeRef = shapeStore.getObjects(property, namedNode('http://www.w3.org/ns/shacl#node'), defaultGraph());
 
             const path = shapeStore.getObjects(property, namedNode('http://www.w3.org/ns/shacl#path'), defaultGraph());
@@ -55,11 +60,13 @@ export async function shaclStoreToShexSchema(shapeStore: DatasetCore) {
               }
             }
 
-            if (datatype.length === 1) {
-                valueExpr.datatype = datatype[0].value;
+            if (shape.datatype) {
+                valueExpr.datatype = shape.datatype['@id'];
             } else if (shapeRef.length === 1) {
-                  // TODO: Error if there are any other constraints
-                  valueExpr = shapeRef[0].value;
+                // TODO: Error if there are any other constraints
+                valueExpr = shapeRef[0].value;
+            } else if (valueExpr.nodeKind) {
+
             } else {
                 console.warn('Unsupported property', property);
                 continue;
@@ -70,8 +77,8 @@ export async function shaclStoreToShexSchema(shapeStore: DatasetCore) {
               "predicate": path[0].value,
               "valueExpr": valueExpr,
               // FIXME: Int checks etc should be done here
-              "min": minCount[0]?.value ?? 0,
-              "max": maxCount[0]?.value ?? -1
+              "min": shape.minCount ?? 0,
+              "max": shape.maxCount ?? -1
             })
         }
 

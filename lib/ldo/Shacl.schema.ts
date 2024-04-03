@@ -18,6 +18,56 @@ export const ShaclSchema: Schema = {
           expressions: [
             {
               type: "TripleConstraint",
+              predicate: "http://www.w3.org/ns/shacl#targetClass",
+              valueExpr: {
+                type: "NodeConstraint",
+                nodeKind: "iri",
+              },
+              min: 0,
+              max: -1,
+            },
+            {
+              type: "TripleConstraint",
+              predicate: "http://www.w3.org/ns/shacl#targetSubjectsOf",
+              valueExpr: {
+                type: "NodeConstraint",
+                nodeKind: "iri",
+              },
+              min: 0,
+              max: -1,
+            },
+            {
+              type: "TripleConstraint",
+              predicate: "http://www.w3.org/ns/shacl#targetObjectsOf",
+              valueExpr: {
+                type: "NodeConstraint",
+                nodeKind: "iri",
+              },
+              min: 0,
+              max: -1,
+            },
+            {
+              type: "TripleConstraint",
+              predicate: "http://www.w3.org/ns/shacl#severity",
+              valueExpr: {
+                type: "NodeConstraint",
+                nodeKind: "iri",
+              },
+              min: 0,
+              max: 1,
+            },
+            {
+              type: "TripleConstraint",
+              predicate: "http://www.w3.org/ns/shacl#class",
+              valueExpr: {
+                type: "NodeConstraint",
+                nodeKind: "iri",
+              },
+              min: 0,
+              max: -1,
+            },
+            {
+              type: "TripleConstraint",
               predicate: "http://www.w3.org/ns/shacl#closed",
               valueExpr: {
                 type: "NodeConstraint",
@@ -28,10 +78,80 @@ export const ShaclSchema: Schema = {
             },
             {
               type: "TripleConstraint",
+              predicate: "http://www.w3.org/ns/shacl#datatype",
+              valueExpr: {
+                type: "NodeConstraint",
+                nodeKind: "iri",
+              },
+              min: 0,
+              max: 1,
+            },
+            {
+              type: "TripleConstraint",
+              predicate: "http://www.w3.org/ns/shacl#disjoint",
+              valueExpr: {
+                type: "NodeConstraint",
+                nodeKind: "iri",
+              },
+              min: 0,
+              max: -1,
+            },
+            {
+              type: "TripleConstraint",
+              predicate: "http://www.w3.org/ns/shacl#equals",
+              valueExpr: {
+                type: "NodeConstraint",
+                nodeKind: "iri",
+              },
+              min: 0,
+              max: -1,
+            },
+            {
+              type: "TripleConstraint",
+              predicate: "http://www.w3.org/ns/shacl#lessThan",
+              valueExpr: {
+                type: "NodeConstraint",
+                nodeKind: "iri",
+              },
+              min: 0,
+              max: -1,
+            },
+            {
+              type: "TripleConstraint",
+              predicate: "http://www.w3.org/ns/shacl#lessThanOrEquals",
+              valueExpr: {
+                type: "NodeConstraint",
+                nodeKind: "iri",
+              },
+              min: 0,
+              max: -1,
+            },
+            {
+              type: "TripleConstraint",
               predicate: "http://www.w3.org/ns/shacl#maxCount",
               valueExpr: {
                 type: "NodeConstraint",
                 datatype: "http://www.w3.org/2001/XMLSchema#integer",
+              },
+              min: 0,
+              max: 1,
+            },
+            {
+              type: "TripleConstraint",
+              predicate: "http://www.w3.org/ns/shacl#maxExclusive",
+              valueExpr: {
+                type: "NodeConstraint",
+                nodeKind: "literal",
+              },
+              min: 0,
+              max: 1,
+            },
+            {
+              type: "TripleConstraint",
+              predicate: "http://www.w3.org/ns/shacl#maxInclusive",
+              valueExpr: {
+                type: "NodeConstraint",
+                nodeKind: "literal",
               },
               min: 0,
               max: 1,
@@ -52,6 +172,26 @@ export const ShaclSchema: Schema = {
               valueExpr: {
                 type: "NodeConstraint",
                 datatype: "http://www.w3.org/2001/XMLSchema#integer",
+              },
+              min: 0,
+              max: 1,
+            },
+            {
+              type: "TripleConstraint",
+              predicate: "http://www.w3.org/ns/shacl#minExclusive",
+              valueExpr: {
+                type: "NodeConstraint",
+                nodeKind: "literal",
+              },
+              min: 0,
+              max: 1,
+            },
+            {
+              type: "TripleConstraint",
+              predicate: "http://www.w3.org/ns/shacl#minInclusive",
+              valueExpr: {
+                type: "NodeConstraint",
+                nodeKind: "literal",
               },
               min: 0,
               max: 1,
