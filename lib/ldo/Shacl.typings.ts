@@ -24,6 +24,7 @@ export interface ShapeShape {
   severity?: {
     "@id": string;
   };
+  deactivated?: string;
   class?: {
     "@id": string;
   }[];
@@ -51,6 +52,9 @@ export interface ShapeShape {
   minExclusive?: string;
   minInclusive?: string;
   minLength?: number;
+  nodeKind?: {
+    "@id": string;
+  };
   pattern?: string;
   flags?: string;
   qualifiedMaxCount?: number;

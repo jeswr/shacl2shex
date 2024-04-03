@@ -25,6 +25,9 @@ export const ShaclContext: ContextDefinition = {
     "@id": "http://www.w3.org/ns/shacl#severity",
     "@type": "@id",
   },
+  deactivated: {
+    "@id": "http://www.w3.org/ns/shacl#deactivated",
+  },
   class: {
     "@id": "http://www.w3.org/ns/shacl#class",
     "@type": "@id",
@@ -85,6 +88,10 @@ export const ShaclContext: ContextDefinition = {
   minLength: {
     "@id": "http://www.w3.org/ns/shacl#minLength",
     "@type": "http://www.w3.org/2001/XMLSchema#integer",
+  },
+  nodeKind: {
+    "@id": "http://www.w3.org/ns/shacl#nodeKind",
+    "@type": "@id",
   },
   pattern: {
     "@id": "http://www.w3.org/ns/shacl#pattern",
