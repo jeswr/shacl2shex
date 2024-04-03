@@ -16,6 +16,8 @@
     "test": "jest",
     "lint": "eslint lib/* __tests__/* --ext .ts",
     "lint:fix": "eslint lib/* __tests__/* --ext .ts --fix",
+    "fetch:shape": "ts-node scripts/getShapeShape",
+    "ldo": "ldo build --input ./scripts --output ./lib/ldo",
     "build": "tsc",
     "prepare": "tsc",
     "semantic-release": "semantic-release"
@@ -32,23 +34,32 @@
   },
   "homepage": "",
   "devDependencies": {
+    "@ldo/cli": "^0.0.1-alpha.24",
+    "@shexjs/neighborhood-rdfjs": "^1.0.0-alpha.29",
+    "@shexjs/validator": "^1.0.0-alpha.29",
     "@types/jest": "^29.2.6",
+    "@types/n3": "^1.16.4",
+    "@types/rdfjs__term-set": "^2.0.9",
     "@typescript-eslint/eslint-plugin": "^5.48.2",
     "@typescript-eslint/parser": "^5.48.2",
     "eslint": "^8.32.0",
     "eslint-config-airbnb-base": "^15.0.0",
     "eslint-plugin-import": "^2.27.5",
+    "event-emitter-promisify": "^1.1.0",
     "jest": "^29.3.1",
+    "n3": "^1.17.3",
     "pre-commit": "^1.2.2",
+    "rdf-dereference": "^2.2.0",
     "semantic-release": "^20.0.3",
     "ts-jest": "^29.0.5",
+    "ts-node": "^10.9.2",
     "typescript": "^4.9.4"
   },
   "jest": {
     "preset": "ts-jest",
     "collectCoverage": true,
     "coverageReporters": [
-      "json-summary", 
+      "json-summary",
       "text",
       "lcov"
     ],
@@ -83,5 +94,12 @@
   },
   "publishConfig": {
     "access": "public"
+  },
+  "dependencies": {
+    "@ldo/ldo": "^0.0.1-alpha.24",
+    "@rdfjs/term-set": "^2.0.2",
+    "@rdfjs/types": "^1.1.0",
+    "@shexjs/writer": "^1.0.0-alpha.27",
+    "rdf-namespaces": "^1.12.0"
   }
 }
