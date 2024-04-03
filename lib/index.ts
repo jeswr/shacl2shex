@@ -39,7 +39,8 @@ export async function shaclStoreToShexSchema(shapeStore: Store) {
                 continue;
             }
 
-            let valueExpr: string | Record<string, string | string[]> = {
+            // string | Record<string, string | string[] | Record<string, string>>
+            let valueExpr: any = {
               "type": "NodeConstraint",
             }
 
@@ -49,7 +50,9 @@ export async function shaclStoreToShexSchema(shapeStore: Store) {
                 'Literal': 'literal',
                 'BlankNode': 'bnode',
                 'BlankNodeOrIRI': 'nonliteral',
-              }[shape.nodeKind['@id'].replace('http://www.w3.org/ns/shacl#', '')];
+                'IRIOrLiteral': undefined,
+                'BlankNodeOrLiteral': undefined,
+              }[shape.nodeKind['@id']];
 
               if (val) {
                 valueExpr.nodeKind = val;
@@ -58,19 +61,18 @@ export async function shaclStoreToShexSchema(shapeStore: Store) {
             if (inValues.length === 1) {
               const list = shapeStore.extractLists()[inValues[0].value];
               if (list) {
-                // FIXME, make this work for literals
-                if (list.every(v => v.termType === 'NamedNode'))
-                  valueExpr.values = list.map(v => v.value);
+                const [firstTerm] = list;
 
-                // if (list.every(v => v.termType === 'Literal')) {
-                //   valueExpr.nodeKind = 'literal';
-                // } else if (list.every(v => v.termType === 'NamedNode')) {
-                //   valueExpr.nodeKind = 'iri';
-                // } else if (list.every(v => v.termType === 'BlankNode')) {
-                //   valueExpr.nodeKind = 'bnode';
-                // } else if (list.every(v => v.termType !== 'Literal')) {
-                //   valueExpr.nodeKind = 'nonliteral';
-                // }
+                // TODO: Make this just the else case once https://github.com/o-development/ldo/issues/31 is resolved
+                if (firstTerm && firstTerm.termType === 'Literal' && list.every(v => v.termType === 'Literal' && v.datatype.equals(firstTerm.datatype))) {
+                  valueExpr.datatype = firstTerm.datatype.value;
+                } else {
+                  valueExpr.values = list.map(v => v.termType === 'Literal' ? {
+                    "value": v.value,
+                    "type": v.datatype.value
+                  } : v.value);
+                }
+
               }
             }
 
