@@ -1,4 +1,4 @@
-import { ContextDefinition } from "jsonld";
+import { ContextDefinition } from 'jsonld';
 
 /**
  * =============================================================================
@@ -10,38 +10,38 @@ import { ContextDefinition } from "jsonld";
  * ShapeShape Type
  */
 export interface ShapeShape {
-  "@id"?: string;
-  "@context"?: ContextDefinition;
+  '@id'?: string;
+  '@context'?: ContextDefinition;
   targetClass?: {
-    "@id": string;
+    '@id': string;
   }[];
   targetSubjectsOf?: {
-    "@id": string;
+    '@id': string;
   }[];
   targetObjectsOf?: {
-    "@id": string;
+    '@id': string;
   }[];
   severity?: {
-    "@id": string;
+    '@id': string;
   };
   class?: {
-    "@id": string;
+    '@id': string;
   }[];
   closed?: boolean;
   datatype?: {
-    "@id": string;
+    '@id': string;
   };
   disjoint?: {
-    "@id": string;
+    '@id': string;
   }[];
   equals?: {
-    "@id": string;
+    '@id': string;
   }[];
   lessThan?: {
-    "@id": string;
+    '@id': string;
   }[];
   lessThanOrEquals?: {
-    "@id": string;
+    '@id': string;
   }[];
   maxCount?: number;
   maxExclusive?: string;
@@ -53,22 +53,22 @@ export interface ShapeShape {
   minLength?: number;
   nodeKind?:
     | {
-        "@id": "BlankNode";
+        '@id': 'BlankNode';
       }
     | {
-        "@id": "IRI";
+        '@id': 'IRI';
       }
     | {
-        "@id": "Literal";
+        '@id': 'Literal';
       }
     | {
-        "@id": "BlankNodeOrIRI";
+        '@id': 'BlankNodeOrIRI';
       }
     | {
-        "@id": "BlankNodeOrLiteral";
+        '@id': 'BlankNodeOrLiteral';
       }
     | {
-        "@id": "IRIOrLiteral";
+        '@id': 'IRIOrLiteral';
       };
   pattern?: string;
   flags?: string;
