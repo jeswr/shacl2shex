@@ -16,7 +16,7 @@
     "test": "jest",
     "lint": "eslint lib/* __tests__/* --ext .ts",
     "lint:fix": "eslint lib/* __tests__/* --ext .ts --fix",
-    "fetch:shape": "ts-node scripts/getShapeShape",
+    "fetch:shape": "node ./dist/bin/index.js https://www.w3.org/ns/shacl-shacl#ShapeShape scripts/Shacl.shex",
     "ldo": "ldo build --input ./scripts --output ./lib/ldo",
     "build": "tsc",
     "prepare": "tsc",
@@ -108,5 +108,7 @@
     "n3": "^1.17.3",
     "rdf-namespaces": "^1.12.0"
   },
-  "bin": "dist/bin/index.js"
+  "bin": {
+    "shacl2shex": "dist/bin/index.js"
+  }
 }
