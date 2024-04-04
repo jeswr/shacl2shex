@@ -1,20 +1,30 @@
-# template-typescript
-Template repo for my Typescript projects
-[![GitHub license](https://img.shields.io/github/license/jeswr/useState.svg)](https://github.com/jeswr/useState/blob/master/LICENSE)
-[![npm version](https://img.shields.io/npm/v/@jeswr/use-state.svg)](https://www.npmjs.com/package/@jeswr/use-state)
-[![build](https://img.shields.io/github/actions/workflow/status/jeswr/useState/nodejs.yml?branch=main)](https://github.com/jeswr/useState/tree/main/)
+# shacl2shex
+
+Convert basic SHACL shapes to ShEx
+
+:warning: This library is hacked together. Unsupported features include:
+ - `sh:or`, `sh:and` and `sh:xone`
+ - Property paths
+
+[![GitHub license](https://img.shields.io/github/license/jeswr/shacl2shex.svg)](https://github.com/jeswr/shacl2shex/blob/master/LICENSE)
+[![npm version](https://img.shields.io/npm/v/@jeswr/shacl2shex.svg)](https://www.npmjs.com/package/@jeswr/shacl2shex)
+[![build](https://img.shields.io/github/actions/workflow/status/jeswr/shacl2shex/nodejs.yml?branch=main)](https://github.com/jeswr/shacl2shex/tree/main/)
 [![Dependabot](https://badgen.net/badge/Dependabot/enabled/green?icon=dependabot)](https://dependabot.com/)
 [![semantic-release](https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079.svg)](https://github.com/semantic-release/semantic-release)
 
 ## Usage
-When this repository is used as a template, you will need to do the following:
- - Provide secrets tokens for github (`GH_TOKEN`) and NPM (`NPM_TOKEN`)
-   NPM tokens (`NPM_TOKEN`) should be automation tokens generated at https://www.npmjs.com/settings/[user]/tokens/
-   Github tokens (`GH_TOKEN`) should be generated at https://github.com/settings/tokens/new?scopes=repo
-   Secrets should be added at https://github.com/jeswr/[repository-name]/settings/secrets/actions
- - Fill in missing entries in the package.json
+```ts
+import { DatasetCore } from '@rdfjs/types';
+import { shaclStoreToShexSchema, writeShexSchema } from '@jeswr/shacl2shex';
+
+// Creates the ShexJ schema
+const schema = await shaclStoreToShexSchema(store);
+
+// Writes the ShexJ schema to .shex
+console.log(await writeShexSchema(schema, prefixes));
+```
 
 ## License
-©2021–present
+©2024–present
 [Jesse Wright](https://github.com/jeswr),
-[MIT License](https://github.com/jeswr/useState/blob/master/LICENSE).
+[MIT License](https://github.com/jeswr/shacl2shex/blob/master/LICENSE).
