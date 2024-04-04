@@ -33,11 +33,6 @@ npx shacl2shex "input <filePath|directory|url>" "output <filePath|directory>"
 e.g.
 
 ```
-npx shacl2shex "input <filePath|directory|url>" "output <filePath|directory>"
-```
-
-
-```
 npx shacl2shex https://www.w3.org/ns/shacl-shacl#ShapeShape Shacl.shex"
 ```
 
