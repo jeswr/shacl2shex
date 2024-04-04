@@ -2,10 +2,6 @@
 
 Convert basic SHACL shapes to ShEx
 
-:warning: This library is hacked together. Unsupported features include:
- - `sh:or`, `sh:and` and `sh:xone`
- - Property paths
-
 [![GitHub license](https://img.shields.io/github/license/jeswr/shacl2shex.svg)](https://github.com/jeswr/shacl2shex/blob/master/LICENSE)
 [![npm version](https://img.shields.io/npm/v/@jeswr/shacl2shex.svg)](https://www.npmjs.com/package/@jeswr/shacl2shex)
 [![build](https://img.shields.io/github/actions/workflow/status/jeswr/shacl2shex/nodejs.yml?branch=main)](https://github.com/jeswr/shacl2shex/tree/main/)
@@ -22,6 +18,27 @@ const schema = await shaclStoreToShexSchema(store);
 
 // Writes the ShexJ schema to .shex
 console.log(await writeShexSchema(schema, prefixes));
+```
+
+:warning: This library is hacked together. Unsupported features include:
+ - `sh:or`, `sh:and` and `sh:xone`
+ - Property paths
+
+## CLI Usage
+
+```
+npx shacl2shex "input <filePath|directory|url>" "output <filePath|directory>"
+```
+
+e.g.
+
+```
+npx shacl2shex "input <filePath|directory|url>" "output <filePath|directory>"
+```
+
+
+```
+npx shacl2shex https://www.w3.org/ns/shacl-shacl#ShapeShape Shacl.shex"
 ```
 
 ## License
