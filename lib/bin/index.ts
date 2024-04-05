@@ -29,7 +29,7 @@ if (uriInput || fs.existsSync(i)) {
     // Process each shacl file
     shaclcFiles.forEach((file) => {
       const filePath = path.join(i, file);
-      convertToShex(filePath, o).catch((e) => console.warn(e));
+      convertToShex(filePath, filePath.replace(/\.[a-z]$/i, '.shex')).catch((e) => console.warn(e));
     });
   } else {
     console.log('Invalid input');
