@@ -1,0 +1,13 @@
+
+PREFIX cert: <http://www.w3.org/ns/auth/cert#>
+PREFIX ex: <http://example.org/test#>
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+PREFIX pim: <http://www.w3.org/ns/pim/space#>
+PREFIX solid: <http://www.w3.org/ns/solid/terms#>
+
+shape ex:WebIdShape -> foaf:Agent {
+	solid:oidcIssuer IRI .
+	pim:storage IRI .
+	ex:conversationalAgent IRI [1..1] .
+	cert:key xsd:string [0..1] .
+}
