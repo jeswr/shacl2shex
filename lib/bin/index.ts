@@ -8,7 +8,7 @@ import { dereferenceToStore } from '../dereferenceToStore';
 async function convertToShex(inPath: string, outPath: string) {
   const { store, prefixes } = await dereferenceToStore(inPath);
   const schema = await shaclStoreToShexSchema(store);
-  if (schema.shapes.length === 0) {
+  if (!schema.shapes || schema.shapes.length === 0) {
     throw new Error(`No shapes found in ${inPath}`);
   }
   fs.writeFileSync(outPath, await writeShexSchema(schema, prefixes));

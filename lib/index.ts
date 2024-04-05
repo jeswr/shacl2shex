@@ -1,9 +1,12 @@
 /* eslint-disable no-console, no-continue, no-inner-declarations */
-import { DatasetCore, Term, NamedNode } from '@rdfjs/types';
+import { DatasetCore, NamedNode, Term } from '@rdfjs/types';
 import Writer from '@shexjs/writer';
 import { DataFactory, Store } from 'n3';
 import { rdf } from 'rdf-namespaces';
-import { TripleConstraint, shapeExprOrRef } from 'shexj';
+import {
+  Schema, ShapeDecl,
+  TripleConstraint, shapeExprOrRef,
+} from 'shexj';
 import { ShapeShapeShapeType } from './ldo/Shacl.shapeTypes';
 import { shapeFromDataset } from './shapeFromDataset';
 
@@ -26,8 +29,8 @@ function getSingleObjectOfType(
   return objects[0].object;
 }
 
-export async function shaclStoreToShexSchema(shapeStore: Store) {
-  const shexShapes = [];
+export async function shaclStoreToShexSchema(shapeStore: Store): Promise<Schema> {
+  const shexShapes: ShapeDecl[] = [];
   for (const { subject: shape } of shapeStore.match(null, namedNode(rdf.type), namedNode('http://www.w3.org/ns/shacl#NodeShape'), defaultGraph())) {
     const eachOf = [];
     for (const property of shapeStore.getObjects(shape, namedNode('http://www.w3.org/ns/shacl#property'), defaultGraph())) {
@@ -160,15 +163,17 @@ export async function shaclStoreToShexSchema(shapeStore: Store) {
     });
   }
 
-  const filteredShapes = [];
+  const filteredShapes: ShapeDecl[] = [];
 
   const shapes = new Set(shexShapes.map((s) => s.id));
 
   // TODO: Apply this recursively
   // TODO: Add warnings
   for (const shape of shexShapes) {
+    // @ts-ignore
     shape.shapeExpr.expression.expressions = shape.shapeExpr.expression.expressions.filter((eachOf) => typeof eachOf.valueExpr !== 'string' || shapes.has(eachOf.valueExpr));
 
+    // @ts-ignore
     if (shape.shapeExpr.expression.expressions.length > 0) {
       filteredShapes.push(shape);
     }
