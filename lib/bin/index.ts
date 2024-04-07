@@ -16,19 +16,21 @@ async function convertToShex(inPath: string, outPath: string) {
 
 const uriInput = /^https?:\/\//.test(process.argv[2]);
 const i = uriInput ? process.argv[2] : path.join(process.cwd(), process.argv[2]);
-const o = path.join(process.cwd(), process.argv[3]);
+const o = path.join(process.cwd(), process.argv[3] ?? process.argv[2]);
 
 if (uriInput || fs.existsSync(i)) {
   if (uriInput || fs.statSync(i).isFile()) {
     // i is a file
-    convertToShex(i, o);
+    convertToShex(i, o).catch((e) => console.warn(e));
   } else if (fs.statSync(i).isDirectory()) {
     // i is a directory
-    // Get all .shaclc files in the shapes directory
-    const shaclcFiles = fs.readdirSync(i);
+    // Get all shacl files in the shapes directory
+    const shaclcFiles = fs.readdirSync(i, { withFileTypes: true, recursive: true })
+      .filter((dirent) => dirent.isFile())
+      .map((dirent) => path.join(dirent.path, dirent.name));
+
     // Process each shacl file
-    shaclcFiles.forEach((file) => {
-      const filePath = path.join(i, file);
+    shaclcFiles.forEach((filePath) => {
       convertToShex(filePath, filePath.replace(/\.[a-z]+$/i, '.shex')).catch((e) => console.warn(e));
     });
   } else {
