@@ -2,12 +2,13 @@
 /* eslint-disable no-console */
 import * as fs from 'fs';
 import * as path from 'path';
+import type { Store } from 'n3';
+import dereferenceToStore from 'rdf-dereference-store';
 import { shaclStoreToShexSchema, writeShexSchema } from '..';
-import { dereferenceToStore } from '../dereferenceToStore';
 
 async function convertToShex(inPath: string, outPath: string) {
   const { store, prefixes } = await dereferenceToStore(inPath);
-  const schema = await shaclStoreToShexSchema(store);
+  const schema = await shaclStoreToShexSchema(store as Store);
   if (!schema.shapes || schema.shapes.length === 0) {
     throw new Error(`No shapes found in ${inPath}`);
   }

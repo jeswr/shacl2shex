@@ -3,7 +3,7 @@ import { DatasetCore, NamedNode, Term } from '@rdfjs/types';
 import Writer from '@shexjs/writer';
 import { DataFactory, Store } from 'n3';
 import { rdf } from 'rdf-namespaces';
-import {
+import type {
   Schema, ShapeDecl,
   TripleConstraint, shapeExprOrRef,
 } from 'shexj';
