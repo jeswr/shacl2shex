@@ -1,0 +1,27 @@
+PREFIX ex: <http://example.org/test#>
+PREFIX acl: <http://www.w3.org/ns/auth/acl#>
+PREFIX acp: <http://www.w3.org/ns/solid/acp#>
+PREFIX schema: <http://schema.org/>
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+PREFIX pim: <http://www.w3.org/ns/pim/space#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX solid: <http://www.w3.org/ns/solid/terms#>
+
+shape ex:PackageShape -> ex:Package {
+    ex:claims [1..*] @ex:StatementShape .
+    
+    
+    # solid:oidcIssuer IRI [0..*] .
+    # # This is direct access to Solid storage
+    # pim:storage IRI [0..*] .
+    # # This is how one discovers a conversational agent
+    # # that represents the user
+    # ex:conversationalAgent IRI [1..1] .
+}
+
+shape ex:StatementShape -> rdfs:Statement {
+    rdfs:subject IRI [1..1] .
+    rdfs:predicate IRI [1..1] .
+    # rdfs:object [1..1] .
+}
