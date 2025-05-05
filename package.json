@@ -45,7 +45,7 @@
     "@types/rdfjs__term-set": "^2.0.9",
     "@types/shexj": "^2.1.7",
     "@typescript-eslint/eslint-plugin": "^7.5.0",
-    "@typescript-eslint/parser": "^7.5.0",
+    "@typescript-eslint/parser": "^8.31.1",
     "eslint": "^8.57.0",
     "eslint-config-airbnb-base": "^15.0.0",
     "eslint-plugin-import": "^2.29.1",
