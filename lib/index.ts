@@ -34,6 +34,9 @@ export async function shaclStoreToShexSchema(shapeStore: Store): Promise<Schema>
   for (const { subject: shape } of
     shapeStore.match(null, namedNode(rdf.type), namedNode(shacl.NodeShape), defaultGraph())
   ) {
+    // Extract shape-level constraints
+    const shapeNodeKind = shapeStore.getObjects(shape, namedNode(shacl.nodeKind), defaultGraph());
+
     const eachOf = [];
     for (const property of shapeStore.getObjects(shape, namedNode(shacl.property), defaultGraph())) {
       if (property.termType !== 'NamedNode' && property.termType !== 'BlankNode') {
@@ -188,21 +191,67 @@ export async function shaclStoreToShexSchema(shapeStore: Store): Promise<Schema>
       }
     }
 
-    if (eachOf.length === 0) {
-      console.warn('No properties found in shape', shape);
-      continue;
+    // Handle shape-level nodeKind constraint
+    let shapeNodeKindConstraint;
+    if (shapeNodeKind.length === 1 && shapeNodeKind[0].termType === 'NamedNode') {
+      const nodeKindValue = shapeNodeKind[0].value;
+      const nodeKindMapping = {
+        'http://www.w3.org/ns/shacl#IRI': 'iri',
+        'http://www.w3.org/ns/shacl#Literal': 'literal',
+        'http://www.w3.org/ns/shacl#BlankNode': 'bnode',
+        'http://www.w3.org/ns/shacl#BlankNodeOrIRI': 'nonliteral',
+      } as const;
+
+      if (nodeKindValue in nodeKindMapping) {
+        shapeNodeKindConstraint = nodeKindMapping[nodeKindValue as keyof typeof nodeKindMapping];
+      }
     }
 
-    shexShapes.push({
-      id: shape.value,
-      type: 'ShapeDecl',
-      shapeExpr: {
+    // Create the shape expression
+    let shapeExpr: any;
+
+    if (eachOf.length === 0) {
+      // If there are no properties but there is a nodeKind constraint, create a simple nodeKind constraint
+      if (shapeNodeKindConstraint) {
+        shapeExpr = {
+          type: 'NodeConstraint',
+          nodeKind: shapeNodeKindConstraint,
+        };
+      } else {
+        console.warn('No properties found in shape', shape);
+        continue;
+      }
+    } else {
+      // If there are properties, create the shape with properties
+      const shapeWithProperties: any = {
         type: 'Shape',
         expression: {
           type: 'EachOf',
           expressions: eachOf,
         },
-      },
+      };
+
+      // If there's a nodeKind constraint, wrap with ShapeAnd
+      if (shapeNodeKindConstraint) {
+        shapeExpr = {
+          type: 'ShapeAnd',
+          shapeExprs: [
+            {
+              type: 'NodeConstraint',
+              nodeKind: shapeNodeKindConstraint,
+            },
+            shapeWithProperties,
+          ],
+        };
+      } else {
+        shapeExpr = shapeWithProperties;
+      }
+    }
+
+    shexShapes.push({
+      id: shape.value,
+      type: 'ShapeDecl',
+      shapeExpr,
     });
   }
 
@@ -213,14 +262,33 @@ export async function shaclStoreToShexSchema(shapeStore: Store): Promise<Schema>
   // TODO: Apply this recursively
   // TODO: Add warnings
   for (const shape of shexShapes) {
-    // @ts-ignore
-    shape.shapeExpr.expression.expressions = shape.shapeExpr.expression.expressions.filter(
-      // @ts-ignore
-      (eachOf) => typeof eachOf.valueExpr !== 'string' || shapes.has(eachOf.valueExpr),
-    );
+    let shouldInclude = true;
 
-    // @ts-ignore
-    if (shape.shapeExpr.expression.expressions.length > 0) {
+    // Handle different shape types
+    if (shape.shapeExpr.type === 'NodeConstraint') {
+      // NodeConstraint shapes are always included
+      shouldInclude = true;
+    } else if (shape.shapeExpr.type === 'ShapeAnd') {
+      // ShapeAnd shapes need to check their component shapes
+      // For now, we'll include them all, but this could be refined
+      shouldInclude = true;
+    } else if (shape.shapeExpr.type === 'Shape'
+      && shape.shapeExpr?.expression
+      && typeof shape.shapeExpr?.expression === 'object'
+      && shape.shapeExpr?.expression.type === 'EachOf'
+      && shape.shapeExpr?.expression.expressions
+    ) {
+      // Original logic for Shape with EachOf expressions
+      shape.shapeExpr.expression.expressions = shape.shapeExpr.expression.expressions.filter(
+        (eachOf) => typeof eachOf !== 'string'
+          && eachOf.type === 'TripleConstraint'
+          && ((typeof eachOf.valueExpr !== 'string') || shapes.has(eachOf.valueExpr)),
+      );
+
+      shouldInclude = shape.shapeExpr.expression.expressions.length > 0;
+    }
+
+    if (shouldInclude) {
       filteredShapes.push(shape);
     }
   }

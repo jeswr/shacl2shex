@@ -1,0 +1,7 @@
+PREFIX ex: <http://example.org/test#>
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+
+shape ex:PersonShape -> foaf:Agent ;
+	sh:nodeKind sh:IRI {
+	foaf:name xsd:string .
+}
