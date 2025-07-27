@@ -1,0 +1,52 @@
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX con: <https://solidproject.solidcommunity.net/catalog/taxonomy#>
+PREFIX ex: <http://example.org#>
+PREFIX : <https://solidproject.solidcommunity.net/catalog/shapes#>
+
+shape :CreativeWorkShape -> ex:CreativeWork {
+	ex:name xsd:string [1..1] .
+	ex:subType xsd:string in=["AboutSolid" "AboutSolidApps" "ResearchPaper" "OtherLearningResource" "OtherTechResource" "Primer"] [1..*] .
+	ex:description xsd:string [0..1] .
+	ex:landingPage IRI .
+	ex:provider IRI @:OrganizationShape .
+	ex:author IRI @:PersonShape .
+}
+
+shape :EventShape -> ex:Event {
+	ex:name xsd:string [1..1] .
+	ex:description xsd:string [0..1] .
+	ex:landingPage IRI .
+	ex:provider IRI @:OrganizationShape .
+}
+
+shape :ServiceShape -> ex:Service {
+	ex:name xsd:string [1..1] .
+	ex:subType xsd:string in=["GeneralPurposePodService" "SpecializedPodService" "CommunicationService" "OtherService"] [1..*] .
+	ex:status xsd:string in=["Exploration" "Development" "Production" "Archived"] [1..1] .
+	ex:description xsd:string [0..1] .
+	ex:landingPage IRI .
+	ex:provider IRI @:OrganizationShape .
+}
+
+shape :SoftwareShape -> ex:Software {
+	ex:name xsd:string [1..1] .
+	ex:subType xsd:string in=["ProductivityApp" "LeisureApp" "PodApp" "OtherApp" "PodServer" "ServerPlugin" "SoftwareLibrary"] [1..*] .
+	ex:status xsd:string in=["Exploration" "Development" "Production" "Archived"] [1..1] .
+	ex:description xsd:string [0..1] .
+	ex:landingPage IRI .
+	ex:provider IRI @:OrganizationShape .
+	ex:maintainer IRI @:PersonShape .
+}
+
+shape :OrganizationShape -> ex:Organization {
+	ex:name xsd:string [1..1] .
+	ex:subType xsd:string in=["Company" "GovernmentalOrganization" "UniversityProject" "OpenSourceProject" "FundingOrganization" "OtherNGO"] [1..*] .
+	ex:description xsd:string [0..1] .
+	ex:landingPage IRI .
+}
+
+shape :PersonShape -> ex:Person {
+	ex:name xsd:string [1..1] .
+	ex:description xsd:string [0..1] .
+	ex:landingPage IRI .
+}
