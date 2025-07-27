@@ -4,9 +4,3 @@ shapeClass ex:SuperClass ;
 	rdfs:label "Super class" {
 	in=[ex:ValidInstance] .
 }
-
-ex:ValidInstance a ex:SubClass ;
-	rdfs:label "Valid instance"ex:SubClass a rdfs:Class ;
-	rdfs:label "Sub class" ;
-	rdfs:subClassOf ex:SuperClass .
-

@@ -9,5 +9,3 @@ ex:TestShape a sh:PropertyShape ;
   ]) ;
   sh:hasValue ex:Person ;
   sh:targetNode ex:InvalidResource1, ex:InvalidResource2, ex:ValidResource1, ex:ValidResource2, ex:ValidResource3 .
-
-ex:Person a rdfs:Class .

@@ -1,8 +1,0 @@
-PREFIX ex: <http://example.org/shacl-test/>
-
-
-ex:s a sh:PropertyShape ;
-	sh:targetNode ex:i ;
-	sh:path ex:p ;
-	sh:datatype xsd:byte .
-

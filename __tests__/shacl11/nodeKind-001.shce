@@ -18,9 +18,3 @@ shape ex:ShapeWithIRIOrLiteral -> ex:MyClass {
 shape ex:ShapeWithLiteral -> ex:MyClass {
 	ex:myProperty Literal .
 }
-
-ex:MyClass a rdfs:Class ;
-	rdfs:label "My class"ex:myProperty a rdf:Property ;
-	rdfs:label "my property" ;
-	rdfs:domain ex:MyClass .
-

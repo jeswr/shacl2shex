@@ -12,4 +12,3 @@ shape ex:s1 {
 
 ex:s4 sh:path ex:r ;
 	sh:class ex:C .
-

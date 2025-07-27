@@ -17,15 +17,3 @@ shape ex:ThumbShape ;
 	rdfs:label "Thumb shape" {
 	class=ex:Thumb .
 }
-
-ex:Finger a rdfs:Class ;
-	rdfs:label "Finger" ;
-	rdfs:subClassOf ex:Digitex:Hand a rdfs:Class ;
-	rdfs:label "Hand"ex:Thumb a rdfs:Class ;
-	rdfs:label "Thumb" ;
-	rdfs:subClassOf ex:Digitex:digit a rdf:Property ;
-	rdfs:label "digit" ;
-	rdfs:domain ex:Hand ;
-	rdfs:range ex:Digitex:Digit a rdfs:Class ;
-	rdfs:label "Digit" .
-

@@ -5,8 +5,3 @@ shape ex:AddressShape ;
 	targetNode=ex:InvalidResource1 targetNode=ex:ValidResource1 targetNode=ex:ValidResource2 .
 	ex:address xsd:string|ex:Address .
 }
-
-ex:Address a rdfs:Class ;
-	rdfs:label "Address" ;
-	rdfs:subClassOf rdfs:Resource .
-

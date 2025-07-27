@@ -6,6 +6,3 @@ shape ex:TestShape {
 		rdfs:label "test property"
 	% .
 }
-
-ex:SuperClass a rdfs:Class .
-
