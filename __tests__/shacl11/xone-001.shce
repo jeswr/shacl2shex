@@ -1,0 +1,18 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/node/xone-001.test#>
+
+shape ex:XoneConstraintExampleShape -> ex:Person ;
+	sh:xone ([
+		sh:property [
+			sh:path ex:fullName ;
+			sh:minCount 1
+		]
+	] [
+		sh:property [
+			sh:path ex:firstName ;
+			sh:minCount 1
+		], [
+			sh:path ex:lastName ;
+			sh:minCount 1
+		]
+	]) {
+}

@@ -1,0 +1,8 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/property/hasValue-001.test#>
+
+shape ex:PersonShape -> ex:MalePerson ;
+	rdfs:label "Person shape" {
+	ex:gender xsd:string hasValue="male" %
+		rdfs:label "gender"
+	% .
+}

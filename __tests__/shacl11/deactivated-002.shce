@@ -1,0 +1,5 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/misc/deactivated-002.test#>
+
+shape ex:TestShape {
+	datatype=xsd:boolean deactivated=false targetNode=32 .
+}

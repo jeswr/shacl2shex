@@ -1,0 +1,19 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/property/and-001.test#>
+
+shape ex:AddressShape ;
+	rdfs:label "Address shape" {
+	targetNode=ex:InvalidResource1 targetNode=ex:InvalidResource2 targetNode=ex:InvalidResource3 targetNode=ex:ValidResource1 .
+	ex:address %
+		sh:and ([
+			sh:property [
+				sh:path ex:suburb ;
+				sh:minCount 1
+			]
+		] [
+			sh:property [
+				sh:path ex:postalCode ;
+				sh:minCount 1
+			]
+		])
+	% .
+}

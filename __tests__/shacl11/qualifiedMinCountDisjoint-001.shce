@@ -1,0 +1,31 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/property/qualifiedMinCountDisjoint-001.test#>
+
+shape ex:FingerShape ;
+	rdfs:label "Finger shape" {
+	class=ex:Finger .
+}
+shape ex:HandShape -> ex:Hand ;
+	rdfs:label "Hand shape" {
+	ex:digit qualifiedMaxCount=4 qualifiedValueShape=ex:FingerShape qualifiedValueShapesDisjoint=true %
+		a sh:PropertyShape
+	% .
+	ex:digit qualifiedValueShape=ex:ThumbShape qualifiedValueShapesDisjoint=true qualifiedMinCount=1 %
+		a sh:PropertyShape
+	% .
+}
+shape ex:ThumbShape ;
+	rdfs:label "Thumb shape" {
+	class=ex:Thumb .
+}
+
+ex:Finger a rdfs:Class ;
+	rdfs:label "Finger" ;
+	rdfs:subClassOf ex:Digitex:Hand a rdfs:Class ;
+	rdfs:label "Hand"ex:Thumb a rdfs:Class ;
+	rdfs:label "Thumb" ;
+	rdfs:subClassOf ex:Digitex:digit a rdf:Property ;
+	rdfs:label "digit" ;
+	rdfs:domain ex:Hand ;
+	rdfs:range ex:Digitex:Digit a rdfs:Class ;
+	rdfs:label "Digit" .
+

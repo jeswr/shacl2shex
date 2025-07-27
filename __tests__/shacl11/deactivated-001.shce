@@ -1,0 +1,8 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/misc/deactivated-001.test#>
+
+shape ex:TestShape {
+	datatype=xsd:boolean deactivated=true targetNode=ex:InvalidResource .
+	ex:property [1..*] %
+		a sh:PropertyShape
+	% .
+}

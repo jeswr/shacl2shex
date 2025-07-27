@@ -1,0 +1,6 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/node/closed-002.test#>
+
+shape ex:MyShape {
+	closed=true ignoredProperties=[rdf:type] targetNode=ex:InvalidInstance1 targetNode=ex:ValidInstance1 .
+	ex:someProperty .
+}

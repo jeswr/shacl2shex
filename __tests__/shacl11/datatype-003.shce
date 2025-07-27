@@ -1,0 +1,6 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/property/datatype-003.test#>
+
+shape ex:TestShape {
+	targetNode=ex:InvalidInstance1 targetNode=ex:ValidInstance1 targetNode=ex:ValidInstance2 targetNode=ex:ValidInstance3 .
+	ex:value xsd:string|rdf:langString .
+}

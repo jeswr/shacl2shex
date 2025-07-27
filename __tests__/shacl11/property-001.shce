@@ -1,0 +1,14 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/property/property-001.test#>
+
+shape ex:PersonShape -> ex:Person ;
+	rdfs:label "Person shape" {
+	ex:address %
+		sh:property ex:PersonShape-address-city
+	% .
+}
+
+ex:PersonShape-address-city sh:path ex:city ;
+	sh:class ex:Cityex:City a rdfs:Class ;
+	rdfs:label "City" ;
+	rdfs:subClassOf rdfs:Resource .
+

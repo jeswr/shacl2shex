@@ -1,0 +1,13 @@
+@prefix ex: <http://datashapes.org/sh/tests/core/path/path-complex-001.test#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+
+ex:TestShape a sh:PropertyShape ;
+  sh:path (rdf:type [
+    sh:zeroOrMorePath rdfs:subClassOf
+  ]) ;
+  sh:hasValue ex:Person ;
+  sh:targetNode ex:InvalidResource1, ex:InvalidResource2, ex:ValidResource1, ex:ValidResource2, ex:ValidResource3 .
+
+ex:Person a rdfs:Class .

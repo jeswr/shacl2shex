@@ -1,0 +1,5 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/node/minInclusive-001.test#>
+
+shape ex:TestShape {
+	minInclusive=8 targetNode=8 targetNode=7 targetNode=9 .
+}

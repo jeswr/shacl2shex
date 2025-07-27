@@ -1,0 +1,8 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/property/minCount-002.test#>
+
+shape ex:TestShape {
+	targetNode=ex:ValidResource1 .
+	ex:property [0..*] %
+		sh:name "property"
+	% .
+}

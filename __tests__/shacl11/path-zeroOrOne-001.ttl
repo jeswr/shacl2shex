@@ -1,0 +1,10 @@
+@prefix ex: <http://datashapes.org/sh/tests/core/path/path-zeroOrOne-001.test#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+ex:TestShape a sh:PropertyShape ;
+  sh:path [
+    sh:zeroOrOnePath ex:child
+  ] ;
+  sh:minCount 2 ;
+  sh:targetNode ex:InvalidResource1, ex:ValidResource1, ex:ValidResource2 .

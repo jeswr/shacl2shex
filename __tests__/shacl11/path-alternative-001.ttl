@@ -1,0 +1,11 @@
+@prefix ex: <http://datashapes.org/sh/tests/core/path/path-alternative-001.test#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+ex:TestShape a sh:PropertyShape ;
+  sh:path [
+    sh:alternativePath (ex:property1 ex:property2)
+  ] ;
+  sh:minCount 2 ;
+  sh:targetNode ex:InvalidResource1, ex:InvalidResource2, ex:ValidResource1, ex:ValidResource2, ex:ValidResource3 .

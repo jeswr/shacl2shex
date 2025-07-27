@@ -1,0 +1,8 @@
+PREFIX ex: <http://example.org/shacl-test/>
+
+shape ex:s1 -> ex:C1 ;
+	sh:xone (ex:s2 ex:s2) {
+}
+
+ex:s2 sh:class ex:C2 .
+

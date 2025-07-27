@@ -1,0 +1,9 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/node/class-001.test#>
+
+shape ex:TestShape -> ex:MalePerson {
+	class=ex:Animal class=ex:Person targetNode=ex:John targetNode=ex:Quokki targetNode=ex:Quokkip targetNode=ex:Someone targetNode=ex:Typeless .
+}
+
+ex:Person a rdfs:Class ;
+	rdfs:subClassOf rdfs:Resource .
+

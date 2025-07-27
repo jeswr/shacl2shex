@@ -1,0 +1,8 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/property/node-002.test#>
+
+shape ex:AddressShape {
+	ex:postalCode xsd:string [0..1] .
+}
+shape ex:PersonShape -> ex:Person {
+	ex:address [1..*] @ex:AddressShape .
+}

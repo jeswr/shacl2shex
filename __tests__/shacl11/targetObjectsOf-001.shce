@@ -1,0 +1,6 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/targets/targetObjectsOf-001.test#>
+
+shape ex:TestShape ;
+	rdfs:label "Test shape" {
+	datatype=xsd:integer targetObjectsOf=ex:testProperty .
+}

@@ -1,0 +1,16 @@
+@prefix ex: <http://datashapes.org/sh/tests/core/node/not-001#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+ex:TestShape a sh:NodeShape, rdfs:Class ;
+  rdfs:label "Test shape" ;
+  rdfs:subClassOf rdfs:Resource ;
+  sh:not [
+    a sh:NodeShape ;
+    sh:property [
+      sh:path ex:property ;
+      sh:minCount 1
+    ]
+  ] ;
+  sh:targetNode ex:InvalidResource1, ex:ValidResource1 .

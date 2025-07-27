@@ -1,0 +1,8 @@
+PREFIX ex: <http://example.org/shacl-test/>
+
+shape ex:s1 -> ex:C1 ;
+	sh:qualifiedValueShapesDisjoint 1 ;
+	sh:qualifiedMinCount 5 ;
+	sh:qualifiedMaxCount 2 {
+	class=ex:C2 .
+}

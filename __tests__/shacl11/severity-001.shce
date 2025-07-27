@@ -1,0 +1,5 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/misc/severity-001.test#>
+
+shape ex:TestShape {
+	datatype=xsd:integer severity=Warning targetNode="Hello" .
+}

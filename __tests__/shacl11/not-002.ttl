@@ -1,0 +1,13 @@
+@prefix ex: <http://datashapes.org/sh/tests/core/node/not-002.test#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+ex:NotExampleShape a sh:NodeShape ;
+  sh:not [
+    a sh:NodeShape ;
+    sh:property [
+      sh:path ex:property ;
+      sh:minCount 1
+    ]
+  ] ;
+  sh:targetNode ex:InvalidInstance1, ex:ValidInstance1 .
