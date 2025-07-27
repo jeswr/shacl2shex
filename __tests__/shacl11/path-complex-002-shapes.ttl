@@ -1,0 +1,19 @@
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix ex: <http://example.org/shacl/tests/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+
+ex:s1 a sh:PropertyShape ;
+  sh:targetNode ex:i ;
+  sh:path ([
+    sh:inversePath ex:p
+  ] []) ;
+  sh:class ex:C .
+
+ex:s2 a sh:PropertyShape ;
+  sh:targetNode ex:i ;
+  sh:path ([
+    sh:inversePath ex:p
+  ] [
+    sh:inversePath ex:p
+  ]) ;
+  sh:class ex:C .

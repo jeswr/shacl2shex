@@ -1,0 +1,6 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/targets/multipleTargets-001.test#>
+
+shape ex:TestShape ;
+	rdfs:label "Test shape" {
+	in=[ex:ValidResource1 ex:ValidResource2] targetSubjectsOf=ex:property1 targetSubjectsOf=ex:property2 .
+}

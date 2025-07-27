@@ -1,0 +1,6 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/property/maxExclusive-001.test#>
+
+shape ex:TestShape {
+	targetNode=ex:InvalidResource1 targetNode=ex:InvalidResource2 targetNode=ex:InvalidResource3 targetNode=ex:ValidResource1 targetNode=ex:ValidResource2 .
+	ex:property maxExclusive=1 .
+}

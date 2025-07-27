@@ -1,0 +1,5 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/node/class-002.test#>
+
+shape ex:TestShape -> ex:BNodeClass {
+	class=ex:TestClass targetNode=ex:NamedInstance targetNode="String" .
+}

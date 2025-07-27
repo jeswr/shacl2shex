@@ -1,0 +1,6 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/property/languageIn-001.test#>
+
+shape ex:NewZealandLanguagesShape {
+	targetNode=ex:Berg targetNode=ex:Mountain .
+	ex:prefLabel languageIn=["en" "mi"] .
+}

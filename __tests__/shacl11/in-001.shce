@@ -1,0 +1,5 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/property/in-001.test#>
+
+shapeClass ex:ShapeClass {
+	ex:property xsd:string in=["A" "B" "C"] .
+}

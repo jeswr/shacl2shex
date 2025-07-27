@@ -1,0 +1,8 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/path/path-sequence-duplicate-001.test#>
+
+shape ex:S {
+	targetNode=ex:A .
+	ex:p1/ex:p2 IRI [0..1] %
+		a sh:PropertyShape
+	% .
+}

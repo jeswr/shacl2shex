@@ -1,0 +1,12 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/path/path-inverse-001.test#>
+
+shapeClass ex:Person ;
+	rdfs:label "Person" ;
+	rdfs:subClassOf rdfs:Resource {
+}
+shape ex:TestShape -> ex:Person ;
+	rdfs:label "Test shape" {
+	^ex:child [2..2] %
+		a sh:PropertyShape
+	% .
+}

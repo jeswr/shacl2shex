@@ -1,0 +1,7 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/property/lessThan-002.test#>
+
+shape ex:TestShape ;
+	rdfs:label "Test shape" {
+	targetNode=ex:InvalidInstance1 .
+	ex:first lessThan=ex:second .
+}

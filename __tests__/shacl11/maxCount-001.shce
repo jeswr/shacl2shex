@@ -1,0 +1,6 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/property/maxCount-001.test#>
+
+shape ex:PersonShape -> ex:Person {
+	targetNode=ex:ValidResource .
+	ex:firstName xsd:string [0..1] .
+}

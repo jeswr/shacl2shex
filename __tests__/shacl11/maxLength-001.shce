@@ -1,0 +1,6 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/property/maxLength-001.test#>
+
+shapeClass ex:TestShape ;
+	rdfs:label "Test shape" {
+	ex:testProperty xsd:string maxLength=2 .
+}

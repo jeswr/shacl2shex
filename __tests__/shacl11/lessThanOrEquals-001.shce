@@ -1,0 +1,6 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/property/lessThanOrEquals-001.test#>
+
+shape ex:TestShape {
+	targetNode=ex:InvalidResource1 targetNode=ex:InvalidResource2 targetNode=ex:ValidResource1 targetNode=ex:ValidResource2 targetNode=ex:ValidResource3 .
+	ex:property1 lessThanOrEquals=ex:property2 .
+}

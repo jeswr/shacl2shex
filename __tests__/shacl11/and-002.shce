@@ -1,0 +1,14 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/node/and-002.test#>
+
+shape ex:AndShape ;
+	sh:and (ex:SuperShape [
+		sh:property [
+			sh:path ex:property ;
+			sh:maxCount 1
+		]
+	]) {
+	targetNode=ex:InvalidInstance1 targetNode=ex:InvalidInstance2 targetNode=ex:ValidInstance1 .
+}
+shape ex:SuperShape {
+	ex:property [1..*] .
+}

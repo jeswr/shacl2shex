@@ -1,0 +1,36 @@
+@prefix ex: <http://datashapes.org/sh/tests/core/property/qualifiedValueShapesDisjoint-001.test#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+ex:Finger a sh:NodeShape, rdfs:Class ;
+  rdfs:label "Finger" ;
+  rdfs:subClassOf rdfs:Resource .
+
+ex:Thumb a sh:NodeShape, rdfs:Class ;
+  rdfs:label "Thumb" ;
+  rdfs:subClassOf rdfs:Resource .
+
+ex:Hand a sh:NodeShape, rdfs:Class ;
+  rdfs:label "Hand" ;
+  rdfs:subClassOf rdfs:Resource .
+
+ex:HandShape a sh:NodeShape ;
+  sh:property ex:HandShape-digit1, ex:HandShape-digit4 ;
+  sh:targetClass ex:Hand .
+
+ex:HandShape-digit1 sh:path ex:digit ;
+  sh:qualifiedMaxCount 1 ;
+  sh:qualifiedMinCount 1 ;
+  sh:qualifiedValueShape [
+    sh:class ex:Thumb
+  ] ;
+  sh:qualifiedValueShapesDisjoint true .
+
+ex:HandShape-digit4 sh:path ex:digit ;
+  sh:qualifiedMaxCount 4 ;
+  sh:qualifiedMinCount 4 ;
+  sh:qualifiedValueShape [
+    sh:class ex:Finger
+  ] ;
+  sh:qualifiedValueShapesDisjoint true .

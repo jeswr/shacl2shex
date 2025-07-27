@@ -1,0 +1,6 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/targets/targetClassImplicit-001.test#>
+
+shapeClass ex:SuperClass ;
+	rdfs:label "Super class" {
+	in=[ex:ValidInstance] .
+}

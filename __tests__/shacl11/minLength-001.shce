@@ -1,0 +1,6 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/property/minLength-001.test#>
+
+shapeClass ex:TestShape ;
+	rdfs:label "Test shape" {
+	ex:testProperty xsd:string minLength=2 .
+}

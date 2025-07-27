@@ -1,0 +1,9 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/node/node-001.test#>
+
+shapeClass ex:TestClass ;
+	rdfs:label "Test class" ;
+	rdfs:subClassOf rdfs:Resource ;
+	sh:node [
+		sh:class ex:OtherClass
+	] {
+}

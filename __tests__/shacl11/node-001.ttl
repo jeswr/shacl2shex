@@ -1,0 +1,47 @@
+@prefix ex: <http://datashapes.org/sh/tests/core/property/node-001.test#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+ex:Person a sh:NodeShape, rdfs:Class ;
+  rdfs:label "Person" ;
+  rdfs:subClassOf rdfs:Resource ;
+  sh:property [
+    rdfs:label "email" ;
+    sh:path ex:email ;
+    ex:datatype xsd:string
+  ], [
+    rdfs:label "first name" ;
+    sh:path ex:firstName ;
+    sh:maxCount 1 ;
+    sh:minCount 1 ;
+    sh:datatype xsd:string
+  ], [
+    rdfs:label "last name" ;
+    sh:path ex:lastName ;
+    sh:datatype xsd:string
+  ] .
+
+ex:Issue a sh:NodeShape, rdfs:Class ;
+  rdfs:label "Issue" ;
+  rdfs:subClassOf rdfs:Resource ;
+  sh:property ex:Issue-assignedTo, ex:Issue-submittedBy .
+
+ex:Issue-assignedTo sh:path ex:assignedTo ;
+  sh:class ex:Person ;
+  sh:node [
+    sh:property [
+      sh:path ex:email ;
+      sh:maxCount 1 ;
+      sh:minCount 1
+    ], [
+      sh:path ex:lastName ;
+      sh:maxCount 1 ;
+      sh:minCount 1
+    ] ;
+    rdfs:comment "All assignees must have an email and a last name."
+  ] .
+
+ex:Issue-submittedBy sh:path ex:submittedBy ;
+  sh:minCount 1 ;
+  sh:class ex:Person .

@@ -1,0 +1,6 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/targets/targetSubjectsOf-002.test#>
+
+shape ex:TestShape -> ex:MyClass {
+	targetSubjectsOf=ex:myProperty .
+	ex:myProperty [0..1] .
+}

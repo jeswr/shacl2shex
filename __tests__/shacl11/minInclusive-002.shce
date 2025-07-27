@@ -1,0 +1,5 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/node/minInclusive-001.test#>
+
+shape ex:TestShape {
+	minInclusive="2002-10-10T12:00:00-05:00"^^<http://www.w3.org/2001/XMLSchema#dateTime> targetNode=ex:TestShape targetNode="2002-10-10T12:00:00-05:00"^^<http://www.w3.org/2001/XMLSchema#dateTime> targetNode="2002-10-10T12:00:01-05:00"^^<http://www.w3.org/2001/XMLSchema#dateTime> targetNode="2002-10-09T12:00:00-05:00"^^<http://www.w3.org/2001/XMLSchema#dateTime> targetNode="2002-10-10T12:00:00"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
+}

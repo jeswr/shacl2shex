@@ -1,0 +1,8 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/property/class-001.test#>
+
+shape ex:TestShape {
+	targetNode=ex:InvalidResource1 targetNode=ex:ValidResource1 targetNode=ex:ValidResource2 .
+	ex:testProperty ex:SuperClass %
+		rdfs:label "test property"
+	% .
+}
