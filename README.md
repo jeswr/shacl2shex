@@ -11,13 +11,19 @@ Convert basic SHACL shapes to ShEx
 ## Usage
 ```ts
 import { DatasetCore } from '@rdfjs/types';
-import { shaclStoreToShexSchema, writeShexSchema } from '@jeswr/shacl2shex';
+import { shaclStoreToShexSchema, writeShexSchema, shapeMapFromDataset, writeShapeMap } from '@jeswr/shacl2shex';
 
 // Creates the ShexJ schema
 const schema = await shaclStoreToShexSchema(store);
 
 // Writes the ShexJ schema to .shex
 console.log(await writeShexSchema(schema, prefixes));
+
+// Extract ShapeMap from SHACL target classes (resolves issue #283)
+const shapeMap = shapeMapFromDataset(store);
+
+// Write ShapeMap to string format
+console.log(writeShapeMap(shapeMap, prefixes));
 ```
 
 :warning: This library is hacked together. Unsupported features include:
@@ -27,14 +33,48 @@ console.log(await writeShexSchema(schema, prefixes));
 ## CLI Usage
 
 ```
-npx @jeswr/shacl2shex "input <filePath|directory|url>" "output <filePath|directory>"
+npx @jeswr/shacl2shex "input <filePath|directory|url>" "output <filePath|directory>" [--shapemap|-s]
 ```
+
+**Options:**
+- `--shapemap, -s`: Generate a ShapeMap file alongside the ShEx output. The ShapeMap preserves SHACL target class information (from `sh:targetClass`) which is otherwise lost in the ShEx conversion.
 
 e.g.
 
 ```
 npx @jeswr/shacl2shex https://www.w3.org/ns/shacl-shacl#ShapeShape Shacl.shex
+npx @jeswr/shacl2shex shapes.shaclc output.shex --shapemap
 ```
+
+## ShapeMap Generation
+
+As of version X.X.X, this library can generate ShapeMap files to preserve SHACL target information that would otherwise be lost during ShEx conversion.
+
+SHACL's `sh:targetClass` specifies which RDF classes a shape should validate. Since ShEx doesn't have a direct equivalent, this information is typically lost. ShapeMaps provide a way to specify which nodes should be validated against which shapes.
+
+### Example
+
+Given this SHACL:
+```shaclc
+shape ex:PersonShape -> ex:Person {
+    ex:name xsd:string [1..1] .
+}
+```
+
+The tool generates:
+1. **ShEx file** (`output.shex`):
+```shex
+ex:PersonShape {
+    (ex:name xsd:string{1,1})
+}
+```
+
+2. **ShapeMap file** (`output.shapemap`):
+```
+{FOCUS rdf:type ex:Person}@ex:PersonShape
+```
+
+The ShapeMap can be used with ShEx validators to specify that nodes of type `ex:Person` should be validated against `ex:PersonShape`.
 
 ## License
 ©2024–present
