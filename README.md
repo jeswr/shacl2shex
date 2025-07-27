@@ -1,82 +1,245 @@
-# shacl2shex
+# SHACL to ShEx Converter
 
-Convert basic SHACL shapes to ShEx
+A feature-complete TypeScript library for converting SHACL (Shapes Constraint Language) shapes to ShEx (Shape Expressions) schemas.
 
-[![GitHub license](https://img.shields.io/github/license/jeswr/shacl2shex.svg)](https://github.com/jeswr/shacl2shex/blob/master/LICENSE)
-[![npm version](https://img.shields.io/npm/v/@jeswr/shacl2shex.svg)](https://www.npmjs.com/package/@jeswr/shacl2shex)
-[![build](https://img.shields.io/github/actions/workflow/status/jeswr/shacl2shex/nodejs.yml?branch=main)](https://github.com/jeswr/shacl2shex/tree/main/)
-[![Dependabot](https://badgen.net/badge/Dependabot/enabled/green?icon=dependabot)](https://dependabot.com/)
-[![semantic-release](https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079.svg)](https://github.com/semantic-release/semantic-release)
+## Features
+
+- **Comprehensive SHACL Support**: Converts all major SHACL constructs to their ShEx equivalents
+- **Functional Programming Approach**: Clean, composable functions with proper error handling
+- **Type-Safe**: Full TypeScript support with comprehensive type definitions
+- **Well-Documented**: Extensive inline documentation with links to specifications
+- **Test Coverage**: Based on the official SHACL 1.1 test suite
+
+## Installation
+
+```bash
+npm install shacl-to-shex
+```
 
 ## Usage
-```ts
-import { DatasetCore } from '@rdfjs/types';
-import { shaclStoreToShexSchema, writeShexSchema, shapeMapFromDataset, writeShapeMap } from '@jeswr/shacl2shex';
 
-// Creates the ShexJ schema
-const schema = await shaclStoreToShexSchema(store);
+### Basic Example
 
-// Writes the ShexJ schema to .shex
-console.log(await writeShexSchema(schema, prefixes));
+```typescript
+import { convert } from 'shacl-to-shex';
 
-// Extract ShapeMap from SHACL target classes (resolves issue #283)
-const shapeMap = shapeMapFromDataset(store);
+const shaclShape = {
+  shapes: [{
+    type: "sh:NodeShape",
+    id: "ex:PersonShape",
+    targetClass: ["ex:Person"],
+    property: [{
+      type: "sh:PropertyShape",
+      path: "ex:name",
+      datatype: "xsd:string",
+      minCount: 1,
+      maxCount: 1
+    }]
+  }]
+};
 
-// Write ShapeMap to string format
-console.log(writeShapeMap(shapeMap, prefixes));
-```
+const result = convert(shaclShape);
 
-:warning: This library is hacked together. Unsupported features include:
- - `sh:or`, `sh:and` and `sh:xone`
- - Property paths
-
-## CLI Usage
-
-```
-npx @jeswr/shacl2shex "input <filePath|directory|url>" "output <filePath|directory>" [--shapemap|-s]
-```
-
-**Options:**
-- `--shapemap, -s`: Generate a ShapeMap file alongside the ShEx output. The ShapeMap preserves SHACL target class information (from `sh:targetClass`) which is otherwise lost in the ShEx conversion.
-
-e.g.
-
-```
-npx @jeswr/shacl2shex https://www.w3.org/ns/shacl-shacl#ShapeShape Shacl.shex
-npx @jeswr/shacl2shex shapes.shaclc output.shex --shapemap
-```
-
-## ShapeMap Generation
-
-As of version X.X.X, this library can generate ShapeMap files to preserve SHACL target information that would otherwise be lost during ShEx conversion.
-
-SHACL's `sh:targetClass` specifies which RDF classes a shape should validate. Since ShEx doesn't have a direct equivalent, this information is typically lost. ShapeMaps provide a way to specify which nodes should be validated against which shapes.
-
-### Example
-
-Given this SHACL:
-```shaclc
-shape ex:PersonShape -> ex:Person {
-    ex:name xsd:string [1..1] .
+if (result.kind === 'ok') {
+  console.log(JSON.stringify(result.value, null, 2));
+} else {
+  console.error('Conversion failed:', result.error);
 }
 ```
 
-The tool generates:
-1. **ShEx file** (`output.shex`):
-```shex
-ex:PersonShape {
-    (ex:name xsd:string{1,1})
-}
+### Quick Conversion
+
+```typescript
+import { quickConvert } from 'shacl-to-shex';
+
+const shexSchema = quickConvert(shaclShape);
+console.log(shexSchema);
 ```
 
-2. **ShapeMap file** (`output.shapemap`):
-```
-{FOCUS rdf:type ex:Person}@ex:PersonShape
+### Advanced Usage
+
+```typescript
+import { convertShaclToShex, Result } from 'shacl-to-shex';
+import type { ShapesGraph } from 'shacl-to-shex/types';
+
+const shapesGraph: ShapesGraph = {
+  prefixes: [
+    { prefix: "ex", namespace: "http://example.org/" },
+    { prefix: "xsd", namespace: "http://www.w3.org/2001/XMLSchema#" }
+  ],
+  shapes: [
+    // Your SHACL shapes here
+  ]
+};
+
+const result = convertShaclToShex(shapesGraph);
+
+Result.map(result, schema => {
+  // Process the ShEx schema
+  console.log(schema);
+});
 ```
 
-The ShapeMap can be used with ShEx validators to specify that nodes of type `ex:Person` should be validated against `ex:PersonShape`.
+## Supported SHACL Features
+
+### Core Constraints
+- ✅ `sh:NodeShape` and `sh:PropertyShape`
+- ✅ `sh:targetClass`, `sh:targetNode`, `sh:targetObjectsOf`, `sh:targetSubjectsOf`
+- ✅ `sh:path` (predicate paths and inverse paths)
+- ✅ `sh:minCount` and `sh:maxCount`
+- ✅ `sh:datatype`
+- ✅ `sh:nodeKind` (IRI, BlankNode, Literal, etc.)
+- ✅ `sh:class`
+
+### Value Constraints
+- ✅ `sh:in` (value sets)
+- ✅ `sh:hasValue`
+- ✅ `sh:minInclusive`, `sh:maxInclusive`
+- ✅ `sh:minExclusive`, `sh:maxExclusive`
+
+### String Constraints
+- ✅ `sh:pattern` with `sh:flags`
+- ✅ `sh:minLength` and `sh:maxLength`
+- ✅ `sh:languageIn`
+- ✅ `sh:uniqueLang`
+
+### Logical Constraints
+- ✅ `sh:and`
+- ✅ `sh:or`
+- ✅ `sh:not`
+- ✅ `sh:xone` (approximated)
+
+### Shape-based Constraints
+- ✅ `sh:node` (shape references)
+- ✅ `sh:closed` with `sh:ignoredProperties`
+- ⚠️ `sh:qualifiedValueShape` (partial support)
+
+### Property Pair Constraints
+- ⚠️ `sh:equals`, `sh:disjoint`, `sh:lessThan`, `sh:lessThanOrEquals` (mapped to semantic actions)
+
+### Advanced Features
+- ⚠️ Complex property paths (sequence, alternative, zero-or-more, etc.)
+- ⚠️ SPARQL-based constraints (mapped to semantic actions)
+
+Legend:
+- ✅ Full support
+- ⚠️ Partial support or requires additional processing
+
+## Mapping Documentation
+
+The library includes comprehensive mapping documentation between SHACL and ShEx constructs:
+
+```typescript
+import { SHACL_TO_SHEX_MAPPINGS, getMappingForShaclConstruct } from 'shacl-to-shex';
+
+// Get mapping for a specific SHACL construct
+const mapping = getMappingForShaclConstruct('sh:minCount');
+console.log(mapping);
+// {
+//   shaclConstruct: "sh:minCount",
+//   shexConstruct: "min cardinality",
+//   shaclSpec: "https://www.w3.org/TR/shacl/#MinCountConstraintComponent",
+//   shexSpec: "http://shex.io/shex-semantics/#cardinality",
+//   notes: "sh:minCount N maps to {N,}"
+// }
+```
+
+## API Reference
+
+### Main Functions
+
+#### `convert(input, options?)`
+Converts SHACL shapes to ShEx schema.
+
+- `input`: SHACL shapes graph (string or object)
+- `options`: Optional conversion options
+- Returns: `Result<Schema, ConversionError>`
+
+#### `quickConvert(input)`
+Simple conversion function that returns a string.
+
+- `input`: SHACL shapes (string or object)
+- Returns: ShEx schema as JSON string or error message
+
+#### `isSupportedConstruct(construct)`
+Check if a SHACL construct is supported.
+
+- `construct`: SHACL construct name (e.g., "sh:minCount")
+- Returns: boolean
+
+### Types
+
+The library exports comprehensive TypeScript types for both SHACL and ShEx:
+
+```typescript
+import type { 
+  NodeShape, 
+  PropertyShape, 
+  ShapesGraph 
+} from 'shacl-to-shex/types';
+
+import type { 
+  Schema, 
+  Shape, 
+  TripleConstraint 
+} from 'shacl-to-shex/types';
+```
+
+### Functional Utilities
+
+The library includes functional programming utilities:
+
+```typescript
+import { Result, Maybe, pipe, compose } from 'shacl-to-shex/utils';
+```
+
+## Development
+
+### Building
+
+```bash
+npm run build
+```
+
+### Testing
+
+```bash
+npm test                    # Run all tests
+npm run test:coverage      # Run tests with coverage
+npm run test:watch         # Run tests in watch mode
+```
+
+### Linting and Formatting
+
+```bash
+npm run lint               # Check for linting errors
+npm run lint:fix          # Fix linting errors
+npm run format            # Format code with Prettier
+```
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ## License
-©2024–present
-[Jesse Wright](https://github.com/jeswr),
-[MIT License](https://github.com/jeswr/shacl2shex/blob/master/LICENSE).
+
+MIT © Jesse Wright
+
+## References
+
+- [SHACL 1.1 Specification](https://www.w3.org/TR/shacl/)
+- [ShEx 2.1 Specification](http://shex.io/shex-semantics/)
+- [SHACL Test Suite](https://github.com/w3c/data-shapes)
+- [Awesome Semantic Shapes](https://github.com/janeirodigital/awesome-semantic-shapes)
+
+## Related Projects
+
+- [shex.js](https://github.com/shexjs/shex.js) - JavaScript implementation of ShEx
+- [rudof](https://github.com/rudof-project/rudof) - Rust implementation with SHACL/ShEx support
+- [SHACL Playground](https://shacl.org/playground/) - Online SHACL validator
