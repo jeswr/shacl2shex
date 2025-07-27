@@ -10,6 +10,9 @@ import type {
 import { ShapeShapeShapeType } from './ldo/Shacl.shapeTypes';
 import { shapeFromDataset } from './shapeFromDataset';
 
+export { shapeMapFromDataset, writeShapeMap } from './shapeMapFromDataset';
+export type { ShapeMap, ShapeMapEntry } from './shapeMapFromDataset';
+
 const { namedNode, defaultGraph } = DataFactory;
 
 function getSingleObjectOfType(
@@ -31,6 +34,20 @@ function getSingleObjectOfType(
 
 export async function shaclStoreToShexSchema(shapeStore: Store): Promise<Schema> {
   const shexShapes: ShapeDecl[] = [];
+
+  // First pass: collect all shapes and their target classes for reference resolution
+  const shapeTargetMap = new Map<string, string>(); // target class -> shape IRI
+  for (const { subject: shape } of
+    shapeStore.match(null, namedNode(rdf.type), namedNode(shacl.NodeShape), defaultGraph())
+  ) {
+    const targetClasses = shapeStore.getObjects(shape, namedNode(shacl.targetClass), defaultGraph());
+    for (const targetClass of targetClasses) {
+      if (targetClass.termType === 'NamedNode') {
+        shapeTargetMap.set(targetClass.value, shape.value);
+      }
+    }
+  }
+
   for (const { subject: shape } of
     shapeStore.match(null, namedNode(rdf.type), namedNode(shacl.NodeShape), defaultGraph())
   ) {
@@ -84,48 +101,72 @@ export async function shaclStoreToShexSchema(shapeStore: Store): Promise<Schema>
       if (shapeData.datatype) {
         valueExpr.datatype = shapeData.datatype['@id'];
       } else if (shapeData.class && shapeData.class.length > 0) {
-        // Handle sh:class constraint by creating a nested shape with rdf:type
-        // If there's also a nodeKind constraint, we need to combine them
-        if (valueExpr.nodeKind) {
-          // Create a ShapeAnd that combines the nodeKind constraint with the class shape
-          valueExpr = {
-            type: 'ShapeAnd',
-            shapeExprs: [
-              {
-                type: 'NodeConstraint',
-                nodeKind: valueExpr.nodeKind,
-              },
-              {
-                type: 'Shape',
-                expression: {
-                  type: 'TripleConstraint',
-                  predicate: rdf.type,
-                  valueExpr: {
-                    type: 'NodeConstraint',
-                    values: shapeData.class.map((cls) => cls['@id']),
+        // Check if there's a shape that targets this class
+        const classIri = shapeData.class[0]['@id'];
+        const targetShape = shapeTargetMap.get(classIri);
+
+        if (targetShape && shapeData.class.length === 1) {
+          // Use shape reference if there's a shape targeting this class
+          if (valueExpr.nodeKind) {
+            // Combine nodeKind constraint with shape reference
+            valueExpr = {
+              type: 'ShapeAnd',
+              shapeExprs: [
+                {
+                  type: 'NodeConstraint',
+                  nodeKind: valueExpr.nodeKind,
+                },
+                targetShape,
+              ],
+            };
+          } else {
+            // Just the shape reference
+            valueExpr = targetShape;
+          }
+        } else
+          // Handle sh:class constraint by creating a nested shape with rdf:type
+          // If there's also a nodeKind constraint, we need to combine them
+          if (valueExpr.nodeKind) {
+            // Create a ShapeAnd that combines the nodeKind constraint with the class shape
+            valueExpr = {
+              type: 'ShapeAnd',
+              shapeExprs: [
+                {
+                  type: 'NodeConstraint',
+                  nodeKind: valueExpr.nodeKind,
+                },
+                {
+                  type: 'Shape',
+                  expression: {
+                    type: 'TripleConstraint',
+                    predicate: rdf.type,
+                    valueExpr: {
+                      type: 'NodeConstraint',
+                      values: shapeData.class.map((cls) => cls['@id']),
+                    },
                   },
                 },
+              ],
+            };
+          } else {
+            // Just the class constraint without nodeKind
+            valueExpr = {
+              type: 'Shape',
+              expression: {
+                type: 'TripleConstraint',
+                predicate: rdf.type,
+                valueExpr: {
+                  type: 'NodeConstraint',
+                  values: shapeData.class.map((cls) => cls['@id']),
+                },
               },
-            ],
-          };
-        } else {
-          // Just the class constraint without nodeKind
-          valueExpr = {
-            type: 'Shape',
-            expression: {
-              type: 'TripleConstraint',
-              predicate: rdf.type,
-              valueExpr: {
-                type: 'NodeConstraint',
-                values: shapeData.class.map((cls) => cls['@id']),
-              },
-            },
-          };
-        }
+            };
+          }
       } else if (shapeRef.length === 1) {
         // TODO: Error if there are any other constraints
         valueExpr = shapeRef[0].value;
-      } else if (valueExpr.nodeKind || valueExpr.values) {
+      } else if ((typeof valueExpr === 'object' && 'nodeKind' in valueExpr && valueExpr.nodeKind)
+                 || (typeof valueExpr === 'object' && 'values' in valueExpr && valueExpr.values)) {
         // Noop - keep the existing NodeConstraint
       } else {
         console.warn('Unsupported property', property);
