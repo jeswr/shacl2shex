@@ -1,0 +1,6 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/property/minInclusive-001.test#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+ex:TestShape {
+  ex:property xsd:integer MININCLUSIVE 0
+}

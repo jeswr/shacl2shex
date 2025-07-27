@@ -1,0 +1,5 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/property/pattern-002.test#>
+
+ex:TestShape {
+  ex:property /^ex:/
+}

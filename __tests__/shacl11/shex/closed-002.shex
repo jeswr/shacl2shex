@@ -1,0 +1,6 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/node/closed-002.test#>
+
+ex:MyShape CLOSED {
+  ex:p1 . ;
+  ex:p2 .
+}

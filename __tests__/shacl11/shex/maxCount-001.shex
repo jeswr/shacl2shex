@@ -1,0 +1,6 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/property/maxCount-001.test#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+ex:PersonShape {
+  ex:firstName xsd:string ?
+}

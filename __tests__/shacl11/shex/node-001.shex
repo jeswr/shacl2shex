@@ -1,0 +1,19 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/property/node-001.test#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+ex:Person {
+  rdfs:label ["Person"] ;
+  ex:email xsd:string * ;
+  ex:firstName xsd:string ;
+  ex:lastName xsd:string *
+}
+
+ex:Issue {
+  rdfs:label ["Issue"] ;
+  ex:assignedTo @ex:Person AND {
+    ex:email . ;
+    ex:lastName .
+  } ;
+  ex:submittedBy @ex:Person +
+}

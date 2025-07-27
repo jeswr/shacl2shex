@@ -1,0 +1,5 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/misc/message-001.test#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+ex:TestShape xsd:integer 
+  // %% "Test message"@en

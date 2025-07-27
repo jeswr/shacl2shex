@@ -1,0 +1,5 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/targets/targetClassImplicit-001.test#>
+
+ex:TestShape {
+  ex:myProperty . ?
+}

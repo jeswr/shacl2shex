@@ -1,0 +1,7 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/path/path-strange-001.test#>
+
+# Note: ShEx doesn't support complex SHACL paths
+# This would need to be modeled differently
+ex:TestShape {
+  . *
+}

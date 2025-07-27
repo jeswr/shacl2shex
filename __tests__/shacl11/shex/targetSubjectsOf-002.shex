@@ -1,0 +1,7 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/targets/targetSubjectsOf-002.test#>
+
+# Note: ShEx doesn't have targetSubjectsOf
+# This would be applied to subjects of the specified property
+ex:TestShape {
+  ex:knows . +
+}

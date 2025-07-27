@@ -1,0 +1,5 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/property/uniqueLang-002.test#>
+
+ex:TestShape {
+  ex:testProperty . * UNIQUELANG
+}

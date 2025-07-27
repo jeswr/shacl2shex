@@ -1,0 +1,8 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/property/uniqueLang-001.test#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+ex:TestShape {
+  rdfs:label ["Test shape"] ;
+  ex:testProperty . * UNIQUELANG ;
+  ex:testProperty { rdfs:label ["test property"] }
+}

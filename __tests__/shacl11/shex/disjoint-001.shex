@@ -1,0 +1,8 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/property/disjoint-001.test#>
+
+# Note: ShEx doesn't have a direct equivalent for disjoint constraint
+# This would need to be enforced at the application level
+ex:TestShape {
+  ex:property1 . * ;
+  ex:property2 . *
+}

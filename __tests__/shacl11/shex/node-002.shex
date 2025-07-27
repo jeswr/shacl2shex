@@ -1,0 +1,10 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/property/node-002.test#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+ex:AddressShape {
+  ex:postalCode xsd:string ?
+}
+
+ex:PersonShape {
+  ex:address @ex:AddressShape +
+}

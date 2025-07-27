@@ -1,0 +1,6 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/property/datatype-002.test#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+ex:TestShape {
+  ex:value xsd:string
+}

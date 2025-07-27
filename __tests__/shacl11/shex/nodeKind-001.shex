@@ -1,0 +1,25 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/property/nodeKind-001.test#>
+
+ex:ShapeWithBlankNode {
+  ex:myProperty BNODE
+}
+
+ex:ShapeWithBlankNodeOrIRI {
+  ex:myProperty NONLITERAL
+}
+
+ex:ShapeWithBlankNodeOrLiteral {
+  ex:myProperty .
+}
+
+ex:ShapeWithIRI {
+  ex:myProperty IRI
+}
+
+ex:ShapeWithIRIOrLiteral {
+  ex:myProperty .
+}
+
+ex:ShapeWithLiteral {
+  ex:myProperty LITERAL
+}

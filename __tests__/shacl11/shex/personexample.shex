@@ -1,0 +1,10 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/complex/personexample.test#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX sh: <http://www.w3.org/ns/shacl#>
+
+ex:PersonShape CLOSED EXTRA rdf:type {
+  ex:ssn /^\\d{3}-\\d{2}-\\d{4}$/ ? ;
+  ex:worksFor IRI ;
+  ^ex:worksFor . * // %% sh:name "employee"
+}

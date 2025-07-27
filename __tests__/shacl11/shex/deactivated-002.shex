@@ -1,0 +1,7 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/property/deactivated-002.test#>
+
+# Note: ShEx doesn't have a direct equivalent for deactivated shapes
+# This shape would always validate
+ex:TestShape {
+  . *
+}
