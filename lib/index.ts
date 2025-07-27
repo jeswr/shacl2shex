@@ -2,7 +2,7 @@
 import { DatasetCore, NamedNode, Term } from '@rdfjs/types';
 import Writer from '@shexjs/writer';
 import { DataFactory, Store } from 'n3';
-import { rdf } from 'rdf-namespaces';
+import { rdf, shacl } from 'rdf-namespaces';
 import type {
   Schema, ShapeDecl,
   TripleConstraint, shapeExprOrRef,
@@ -31,17 +31,17 @@ function getSingleObjectOfType(
 
 export async function shaclStoreToShexSchema(shapeStore: Store): Promise<Schema> {
   const shexShapes: ShapeDecl[] = [];
-  for (const { subject: shape } of shapeStore.match(null, namedNode(rdf.type), namedNode('http://www.w3.org/ns/shacl#NodeShape'), defaultGraph())) {
+  for (const { subject: shape } of shapeStore.match(null, namedNode(rdf.type), namedNode(shacl.NodeShape), defaultGraph())) {
     const eachOf = [];
-    for (const property of shapeStore.getObjects(shape, namedNode('http://www.w3.org/ns/shacl#property'), defaultGraph())) {
+    for (const property of shapeStore.getObjects(shape, namedNode(shacl.property), defaultGraph())) {
       if (property.termType !== 'NamedNode' && property.termType !== 'BlankNode') {
         console.warn('Unsupported property', property);
         continue;
       }
       const shapeData = shapeFromDataset(ShapeShapeShapeType, shapeStore, property);
-      const inValues = shapeStore.getObjects(property, namedNode('http://www.w3.org/ns/shacl#in'), defaultGraph());
-      const shapeRef = shapeStore.getObjects(property, namedNode('http://www.w3.org/ns/shacl#node'), defaultGraph());
-      const path = shapeStore.getObjects(property, namedNode('http://www.w3.org/ns/shacl#path'), defaultGraph());
+      const inValues = shapeStore.getObjects(property, namedNode(shacl.in__workaround), defaultGraph());
+      const shapeRef = shapeStore.getObjects(property, namedNode(shacl.node), defaultGraph());
+      const path = shapeStore.getObjects(property, namedNode(shacl.path), defaultGraph());
 
       let valueExpr: shapeExprOrRef = {
         type: 'NodeConstraint',
@@ -76,11 +76,50 @@ export async function shaclStoreToShexSchema(shapeStore: Store): Promise<Schema>
 
       if (shapeData.datatype) {
         valueExpr.datatype = shapeData.datatype['@id'];
+      } else if (shapeData.class && shapeData.class.length > 0) {
+        // Handle sh:class constraint by creating a nested shape with rdf:type
+        // If there's also a nodeKind constraint, we need to combine them
+        if (valueExpr.nodeKind) {
+          // Create a ShapeAnd that combines the nodeKind constraint with the class shape
+          valueExpr = {
+            type: 'ShapeAnd',
+            shapeExprs: [
+              {
+                type: 'NodeConstraint',
+                nodeKind: valueExpr.nodeKind,
+              },
+              {
+                type: 'Shape',
+                expression: {
+                  type: 'TripleConstraint',
+                  predicate: rdf.type,
+                  valueExpr: {
+                    type: 'NodeConstraint',
+                    values: shapeData.class.map((cls) => cls['@id']),
+                  },
+                },
+              },
+            ],
+          };
+        } else {
+          // Just the class constraint without nodeKind
+          valueExpr = {
+            type: 'Shape',
+            expression: {
+              type: 'TripleConstraint',
+              predicate: rdf.type,
+              valueExpr: {
+                type: 'NodeConstraint',
+                values: shapeData.class.map((cls) => cls['@id']),
+              },
+            },
+          };
+        }
       } else if (shapeRef.length === 1) {
         // TODO: Error if there are any other constraints
         valueExpr = shapeRef[0].value;
       } else if (valueExpr.nodeKind || valueExpr.values) {
-        // Noop
+        // Noop - keep the existing NodeConstraint
       } else {
         console.warn('Unsupported property', property);
         continue;
