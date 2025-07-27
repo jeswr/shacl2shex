@@ -31,7 +31,9 @@ function getSingleObjectOfType(
 
 export async function shaclStoreToShexSchema(shapeStore: Store): Promise<Schema> {
   const shexShapes: ShapeDecl[] = [];
-  for (const { subject: shape } of shapeStore.match(null, namedNode(rdf.type), namedNode(shacl.NodeShape), defaultGraph())) {
+  for (const { subject: shape } of
+    shapeStore.match(null, namedNode(rdf.type), namedNode(shacl.NodeShape), defaultGraph())
+  ) {
     const eachOf = [];
     for (const property of shapeStore.getObjects(shape, namedNode(shacl.property), defaultGraph())) {
       if (property.termType !== 'NamedNode' && property.termType !== 'BlankNode') {
@@ -63,7 +65,9 @@ export async function shaclStoreToShexSchema(shapeStore: Store): Promise<Schema>
           const [firstTerm] = list;
 
           // TODO: Make this just the else case once https://github.com/o-development/ldo/issues/31 is resolved
-          if (firstTerm && firstTerm.termType === 'Literal' && list.every((v) => v.termType === 'Literal' && v.datatype.equals(firstTerm.datatype))) {
+          if (firstTerm
+              && firstTerm.termType === 'Literal'
+              && list.every((v) => v.termType === 'Literal' && v.datatype.equals(firstTerm.datatype))) {
             valueExpr.datatype = firstTerm.datatype.value;
           } else {
             valueExpr.values = list.map((v) => (v.termType === 'Literal' ? {
@@ -136,7 +140,7 @@ export async function shaclStoreToShexSchema(shapeStore: Store): Promise<Schema>
             max: shapeData.maxCount ?? -1,
           };
         }
-        const inversePath = getSingleObjectOfType(shapeStore, pathElem, namedNode('http://www.w3.org/ns/shacl#inversePath'));
+        const inversePath = getSingleObjectOfType(shapeStore, pathElem, namedNode(shacl.inversePath));
         if (inversePath) {
           return {
             type: 'TripleConstraint',
@@ -148,7 +152,7 @@ export async function shaclStoreToShexSchema(shapeStore: Store): Promise<Schema>
             max: shapeData.maxCount ?? -1,
           };
         }
-        const oneOrMorePath = getSingleObjectOfType(shapeStore, pathElem, namedNode('http://www.w3.org/ns/shacl#oneOrMorePath'));
+        const oneOrMorePath = getSingleObjectOfType(shapeStore, pathElem, namedNode(shacl.oneOrMorePath));
         if (oneOrMorePath) {
           return {
             type: 'TripleConstraint',
@@ -210,7 +214,10 @@ export async function shaclStoreToShexSchema(shapeStore: Store): Promise<Schema>
   // TODO: Add warnings
   for (const shape of shexShapes) {
     // @ts-ignore
-    shape.shapeExpr.expression.expressions = shape.shapeExpr.expression.expressions.filter((eachOf) => typeof eachOf.valueExpr !== 'string' || shapes.has(eachOf.valueExpr));
+    shape.shapeExpr.expression.expressions = shape.shapeExpr.expression.expressions.filter(
+      // @ts-ignore
+      (eachOf) => typeof eachOf.valueExpr !== 'string' || shapes.has(eachOf.valueExpr),
+    );
 
     // @ts-ignore
     if (shape.shapeExpr.expression.expressions.length > 0) {
