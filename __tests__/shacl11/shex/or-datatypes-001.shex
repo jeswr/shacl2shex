@@ -1,0 +1,9 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/property/or-datatypes-001.test#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+ex:TestShape {
+  rdfs:label ["Test shape"] ;
+  rdfs:comment xsd:string OR rdf:HTML OR rdf:langString OR xsd:boolean
+}

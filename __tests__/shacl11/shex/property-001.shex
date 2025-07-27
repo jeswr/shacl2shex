@@ -1,0 +1,13 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/property/property-001.test#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+ex:City {
+  rdfs:label ["City"]
+}
+
+ex:PersonShape {
+  rdfs:label ["Person shape"] ;
+  ex:address {
+    ex:city @ex:City
+  }
+}

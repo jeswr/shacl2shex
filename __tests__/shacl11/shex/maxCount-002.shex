@@ -1,0 +1,5 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/property/maxCount-002.test#>
+
+ex:TestShape {
+  ex:property . {0,2}
+}

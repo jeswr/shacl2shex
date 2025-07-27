@@ -1,0 +1,5 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/path/path-alternative-001.test#>
+
+ex:TestShape {
+  (ex:name | ex:firstName) .
+}

@@ -1,0 +1,7 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/targets/targetObjectsOf-001.test#>
+
+# Note: ShEx doesn't have targetObjectsOf
+# This would be applied to objects of the specified property
+ex:TestShape {
+  ex:myProperty . ?
+}

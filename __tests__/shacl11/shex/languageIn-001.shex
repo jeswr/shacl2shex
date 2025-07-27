@@ -1,0 +1,5 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/property/languageIn-001.test#>
+
+ex:NewZealandLanguagesShape {
+  ex:prefLabel [@en @mi]
+}

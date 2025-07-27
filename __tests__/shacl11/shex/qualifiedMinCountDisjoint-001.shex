@@ -1,0 +1,7 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/property/qualifiedMinCountDisjoint-001.test#>
+
+# Note: ShEx doesn't have direct equivalents for qualified cardinality constraints
+# This would need to be enforced at the application level
+ex:TestShape {
+  . *
+}

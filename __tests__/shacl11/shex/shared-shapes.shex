@@ -1,0 +1,6 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/misc/shared-shapes.test#>
+
+# Shared shapes in ShEx
+ex:SharedShape {
+  . *
+}

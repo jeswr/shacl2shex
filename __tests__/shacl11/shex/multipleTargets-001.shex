@@ -1,0 +1,8 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/targets/multipleTargets-001.test#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+# Note: ShEx doesn't have target declarations like SHACL
+# Targets would be specified when validating
+ex:TestShape [ex:ValidResource1 ex:ValidResource2] {
+  rdfs:label ["Test shape"]
+}

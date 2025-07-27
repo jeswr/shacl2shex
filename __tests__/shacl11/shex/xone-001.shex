@@ -1,0 +1,13 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/node/xone-001.test#>
+PREFIX sh: <http://www.w3.org/ns/shacl#>
+
+# ShEx doesn't have direct xone (exactly one) support
+# This approximates it with oneOf
+ex:XoneConstraintExampleShape (
+  { ex:fullName . + }
+  |
+  { 
+    ex:firstName . + ;
+    ex:lastName . +
+  }
+)

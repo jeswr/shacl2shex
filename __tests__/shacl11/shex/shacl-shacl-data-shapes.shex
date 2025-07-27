@@ -1,0 +1,8 @@
+PREFIX sh: <http://www.w3.org/ns/shacl#>
+
+# Note: This is a meta-schema for SHACL itself
+# ShEx equivalent would be very complex
+# Placeholder for SHACL meta-validation
+sh:Shape {
+  . *
+}

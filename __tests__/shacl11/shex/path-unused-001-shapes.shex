@@ -1,0 +1,5 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/path/path-unused-001.test#>
+
+ex:TestShape {
+  . *
+}

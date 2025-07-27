@@ -1,0 +1,6 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/misc/severity-001.test#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+# Note: ShEx doesn't have severity levels like SHACL's Warning
+# This is just the constraint without severity
+ex:TestShape xsd:integer

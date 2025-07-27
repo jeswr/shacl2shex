@@ -1,0 +1,12 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/path/path-inverse-001.test#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX sh: <http://www.w3.org/ns/shacl#>
+
+ex:Person {
+  rdfs:label ["Person"]
+}
+
+ex:TestShape {
+  rdfs:label ["Test shape"] ;
+  ^ex:child . {2}
+}

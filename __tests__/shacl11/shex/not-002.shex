@@ -1,0 +1,5 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/node/not-002.test#>
+
+ex:TestShape {
+  NOT { ex:property . + }
+}

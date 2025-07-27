@@ -1,0 +1,10 @@
+PREFIX ex: <http://datashapes.org/sh/tests/core/property/and-001.test#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+ex:AddressShape {
+  rdfs:label ["Address shape"] ;
+  ex:address {
+    ex:suburb . + ;
+    ex:postalCode . +
+  }
+}

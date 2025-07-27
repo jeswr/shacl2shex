@@ -1,0 +1,9 @@
+PREFIX ex: <http://example.org/shacl-test/>
+
+ex:s2 {
+  a [ex:C2]
+}
+
+# ShEx doesn't have direct xone support
+# The duplicate reference to ex:s2 in xone would be handled differently
+ex:s1 @ex:s2
