@@ -35,12 +35,12 @@ it.each(files)('should convert %s via CLI', async (file) => {
 
   try {
     // Test basic CLI conversion (without --shapemap flag)
-    execSync(`node ${path.join(__dirname, '../dist/bin/index.js')} "${inputPath}" "${outputPath}"`, {
+    execSync(`node ${path.join(__dirname, '../dist/cjs/bin/index.js')} "${inputPath}" "${outputPath}"`, {
       stdio: 'pipe',
       cwd: path.join(__dirname, '..'),
     });
 
-    execSync(`node ${path.join(__dirname, '../dist/bin/index.js')} "${path.join(tempDir, file)}"`, {
+    execSync(`node ${path.join(__dirname, '../dist/cjs/bin/index.js')} "${path.join(tempDir, file)}"`, {
       stdio: 'pipe',
       cwd: path.join(__dirname, '..'),
     });
@@ -61,7 +61,7 @@ it.each(files)('should convert %s via CLI', async (file) => {
       fs.unlinkSync(outputPath);
 
       // Run CLI command with --shapemap flag
-      execSync(`node ${path.join(__dirname, '../dist/bin/index.js')} "${inputPath}" "${outputPath}" --shapemap`, {
+      execSync(`node ${path.join(__dirname, '../dist/cjs/bin/index.js')} "${inputPath}" "${outputPath}" --shapemap`, {
         stdio: 'pipe',
         cwd: path.join(__dirname, '..'),
       });
