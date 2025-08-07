@@ -32,7 +32,7 @@
     "test:cjs": "jest __tests__/module-format-cjs.test.js --coverage=false",
     "test:esm": "node --experimental-vm-modules node_modules/.bin/jest __tests__/module-format-esm.test.mjs --coverage=false",
     "test:exports": "jest __tests__/package-exports.test.js --coverage=false",
-    "test:typescript": "jest __tests__/typescript-compatibility.test.ts --coverage=false",
+    "test:typescript": "jest __tests__/typescript-compatibility.test.ts --coverage=false --testMatch='**/__tests__/typescript-compatibility.test.ts'",
     "test:modules": "npm run test:cjs && npm run test:esm && npm run test:exports && npm run test:typescript",
     "lint": "eslint lib/* __tests__/*.ts --ext .ts",
     "lint:fix": "eslint lib/* __tests__/*.ts --ext .ts --fix",
