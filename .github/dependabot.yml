@@ -11,6 +11,12 @@ updates:
       interval: "daily"
     labels:
       - "dependencies"
+    groups:
+      minor:
+        update-types:
+        - "major"
+        - "minor"
+        - "patch"
   - package-ecosystem: "github-actions"
     directory: "/" # Location of package manifests
     schedule:
