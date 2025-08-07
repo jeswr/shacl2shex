@@ -50,7 +50,12 @@ Examples:
     try {
       const uriInput = /^https?:\/\//.test(input);
       const inputPath = uriInput ? input : path.resolve(process.cwd(), input);
-      const outputPath = output ? path.resolve(process.cwd(), output) : inputPath;
+      // eslint-disable-next-line no-nested-ternary
+      const outputPath = output ? path.resolve(process.cwd(), output) : (
+        /\.[^./\\]+$/.test(inputPath)
+          ? inputPath.replace(/\.[^./\\]+$/, '.shex')
+          : `${inputPath}.shex`
+      );
 
       if (uriInput || fs.existsSync(inputPath)) {
         if (uriInput || fs.statSync(inputPath).isFile()) {

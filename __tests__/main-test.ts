@@ -28,6 +28,7 @@ it.each(files)('should convert %s', async (file) => {
 // E2E CLI tests for all files
 it.each(files)('should convert %s via CLI', async (file) => {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'shacl2shex-e2e-test-'));
+  fs.copyFileSync(path.join(__dirname, file), path.join(tempDir, file));
   const inputPath = path.resolve(__dirname, file);
   const outputPath = path.join(tempDir, 'output.shex');
   const outputShapeMapPath = path.join(tempDir, 'output.shapemap');
@@ -39,11 +40,19 @@ it.each(files)('should convert %s via CLI', async (file) => {
       cwd: path.join(__dirname, '..'),
     });
 
+    execSync(`node ${path.join(__dirname, '../dist/bin/index.js')} "${path.join(tempDir, file)}"`, {
+      stdio: 'pipe',
+      cwd: path.join(__dirname, '..'),
+    });
+
     // Verify ShEx file was generated and matches expected output
+    const outputShexPath = path.join(tempDir, file.replace(/\.(shaclc|shce)$/, '.shex'));
     expect(fs.existsSync(outputPath)).toBe(true);
     const generatedShex = fs.readFileSync(outputPath, 'utf-8');
+    const generatedShexAutoNamed = fs.readFileSync(outputShexPath, 'utf-8');
     const expectedShex = fs.readFileSync(path.join(__dirname, file.replace(/\.(shaclc|shce)$/, '.shex')), 'utf-8');
     expect(generatedShex).toEqual(expectedShex);
+    expect(generatedShexAutoNamed).toEqual(expectedShex);
 
     // Test CLI with --shapemap flag if expected ShapeMap file exists
     const shapeMapPath = path.join(__dirname, file.replace(/\.(shaclc|shce)$/, '.shapemap'));
