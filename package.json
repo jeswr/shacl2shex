@@ -2,8 +2,22 @@
   "name": "@jeswr/shacl2shex",
   "version": "0.0.0-development",
   "description": "Convert SHACL to ShEx",
-  "main": "dist/index.js",
-  "types": "dist/index.d.js",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/cjs/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.ts",
+        "default": "./dist/cjs/index.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
   "directories": {
     "lib": "lib"
   },
@@ -16,10 +30,13 @@
     "test": "jest",
     "lint": "eslint lib/* __tests__/*.ts --ext .ts",
     "lint:fix": "eslint lib/* __tests__/*.ts --ext .ts --fix",
-    "fetch:shape": "./dist/bin/index.js https://www.w3.org/ns/shacl-shacl#ShapeShape scripts/Shacl.shex",
+    "fetch:shape": "./dist/cjs/bin/index.js https://www.w3.org/ns/shacl-shacl#ShapeShape scripts/Shacl.shex",
     "ldo": "ldo build --input ./scripts --output ./lib/ldo",
-    "build": "tsc",
-    "prepare": "tsc",
+    "build": "npm run build:cjs && npm run build:esm && npm run build:post",
+    "build:cjs": "tsc",
+    "build:esm": "tsc -p tsconfig.esm.json",
+    "build:post": "echo '{\"type\":\"commonjs\"}' > dist/cjs/package.json && echo '{\"type\":\"module\"}' > dist/esm/package.json && node scripts/fix-esm-imports.js",
+    "prepare": "npm run build",
     "semantic-release": "semantic-release"
   },
   "repository": {
@@ -110,6 +127,6 @@
     "rdf-namespaces": "^1.12.0"
   },
   "bin": {
-    "shacl2shex": "dist/bin/index.js"
+    "shacl2shex": "dist/cjs/bin/index.js"
   }
 }
