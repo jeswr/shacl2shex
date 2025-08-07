@@ -2,8 +2,17 @@
   "name": "@jeswr/shacl2shex",
   "version": "0.0.0-development",
   "description": "Convert SHACL to ShEx",
-  "main": "dist/index.js",
-  "types": "dist/index.d.js",
+  "main": "./dist/index.cjs",
+  "types": "./dist/index.d.ts",
+  "module": "./dist/index.js",
+  "exports": {
+    ".": {
+      "require": "./dist/index.cjs",
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./package.json": "./package.json"
+  },
   "directories": {
     "lib": "lib"
   },
@@ -18,8 +27,8 @@
     "lint:fix": "eslint lib/* __tests__/*.ts --ext .ts --fix",
     "fetch:shape": "./dist/bin/index.js https://www.w3.org/ns/shacl-shacl#ShapeShape scripts/Shacl.shex",
     "ldo": "ldo build --input ./scripts --output ./lib/ldo",
-    "build": "tsc",
-    "prepare": "tsc",
+    "build": "tsc && cp dist/index.js dist/index.cjs",
+    "prepare": "npm run build",
     "semantic-release": "semantic-release"
   },
   "repository": {
