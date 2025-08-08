@@ -1,8 +1,10 @@
-/* eslint-disable no-console, no-continue, no-inner-declarations */
+/* eslint-disable no-console, no-continue, no-inner-declarations, no-param-reassign, no-use-before-define, max-len */
 import { DatasetCore, NamedNode, Term } from '@rdfjs/types';
 import Writer from '@shexjs/writer';
 import { DataFactory, Store } from 'n3';
-import { rdf, rdfs, shacl, xsd } from 'rdf-namespaces';
+import {
+  rdf, rdfs, shacl, xsd,
+} from 'rdf-namespaces';
 import type {
   Annotation,
   NodeConstraint,
@@ -238,7 +240,7 @@ function translateValueShapeExpr(
 
   // sh:class
   const classes = getObjects(store, shapeTerm, SHACL_CLASS).filter(isIri).map((o) => (o as NamedNode).value);
-  let valueExpr: shapeExpr | undefined = undefined;
+  let valueExpr: shapeExpr | undefined;
 
   if (classes.length > 0) {
     const target = classes.length === 1 ? targetClassToShape.get(classes[0]) : undefined;
