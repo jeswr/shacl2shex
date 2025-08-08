@@ -3,7 +3,8 @@
   "version": "0.0.0-development",
   "description": "Convert SHACL to ShEx",
   "main": "dist/index.js",
-  "types": "dist/index.d.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
   "directories": {
     "lib": "lib"
   },
@@ -18,8 +19,8 @@
     "lint:fix": "eslint lib/* __tests__/*.ts --ext .ts --fix",
     "fetch:shape": "./dist/bin/index.js https://www.w3.org/ns/shacl-shacl#ShapeShape scripts/Shacl.shex",
     "ldo": "ldo build --input ./scripts --output ./lib/ldo",
-    "build": "tsc",
-    "prepare": "tsc",
+    "build": "tsc && rollup -c",
+    "prepare": "npm run build",
     "semantic-release": "semantic-release"
   },
   "repository": {
@@ -40,6 +41,9 @@
   "homepage": "",
   "devDependencies": {
     "@ldo/cli": "^0.0.1-alpha.24",
+    "@rollup/plugin-commonjs": "^28.0.6",
+    "@rollup/plugin-node-resolve": "^16.0.1",
+    "@rollup/plugin-typescript": "^12.1.4",
     "@types/commander": "^2.12.0",
     "@types/jest": "^30.0.0",
     "@types/n3": "^1.16.4",
@@ -53,8 +57,10 @@
     "jest": "^30.0.3",
     "pre-commit": "^1.2.2",
     "rdf-js": "^4.0.2",
+    "rollup": "^4.46.2",
     "semantic-release": "^24.0.0",
     "ts-jest": "^29.1.2",
+    "tslib": "^2.8.1",
     "typescript": "^5.4.3"
   },
   "jest": {
