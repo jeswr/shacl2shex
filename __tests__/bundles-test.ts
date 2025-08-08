@@ -9,7 +9,7 @@ const fixture = 'test.shaclc';
 
 it('CJS build (dist/index.js) works', async () => {
   // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
-  const cjs = require(path.join(__dirname, '..', 'dist', 'index.js')) as typeof import('../lib');
+  const cjs = require('../dist/index.js') as typeof import('../lib');
   const inputPath = path.join(__dirname, fixture);
   const expectedShex = fs.readFileSync(path.join(__dirname, fixture.replace(/\.(shaclc|shce)$/, '.shex')), 'utf-8');
 
