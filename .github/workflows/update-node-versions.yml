@@ -1,0 +1,52 @@
+# This workflow will automatically update Node.js versions in the CI matrix
+name: Update Node.js versions
+
+on:
+  # Run on schedule every Sunday at 7:30 AM UTC  
+  schedule:
+    - cron: "30 7 * * 0"
+  # Allow manual triggering
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  update-node-versions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # Use a token with workflow permissions to update workflows
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update Node.js versions
+        id: update-versions
+        uses: hongaar/update-node-versions@v2
+        with:
+          versions: |
+            latest
+            lts
+            lts/-1
+            lts/-2
+          versions.filter-eol: true
+          updaters.workflows: true
+          updaters.workflows.variable: node-version
+          updaters.engines: false
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: update Node.js versions to ${{ steps.update-versions.outputs.versions }}"
+          title: "chore: update Node.js versions"
+          body: |
+            Automated changes by [update-node-versions](https://github.com/hongaar/update-node-versions) GitHub action
+            
+            Updated Node.js versions to: ${{ steps.update-versions.outputs.versions }}
+            
+            This ensures the CI matrix uses current and supported LTS versions of Node.js.
+          branch: update-node-versions
+          delete-branch: true
