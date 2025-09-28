@@ -1,0 +1,86 @@
+# This workflow will automatically update Node.js versions in the CI matrix
+name: Update Node.js versions
+
+on:
+  # Run on schedule every Sunday at 7:30 AM UTC  
+  schedule:
+    - cron: "30 7 * * 0"
+  # Allow manual triggering
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  update-node-versions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # Use a token with workflow permissions to update workflows
+          token: ${{ github.token }}
+
+      - name: Get suggested Node.js versions
+        id: get-versions
+        uses: hongaar/update-node-versions@v2
+        with:
+          versions: |
+            latest
+            lts
+            lts/-1
+            lts/-2
+          versions.filter-eol: true
+          updaters.workflows: false
+          updaters.engines: false
+
+      - name: Update Node.js versions (additive only)
+        id: update-versions
+        run: |
+          # Get current versions from nodejs.yml
+          current_versions=$(grep -o 'node-version: \[[^]]*\]' .github/workflows/nodejs.yml | grep -o '\[[^]]*\]' | tr -d '[]' | tr ',' '\n' | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//')
+          
+          # Get suggested versions from the action output
+          suggested_output='${{ steps.get-versions.outputs.versions }}'
+          
+          # Handle both array format [18,20,22] and JSON format ["18","20","22"]
+          if [[ "$suggested_output" == \[* ]]; then
+            # Extract versions from array format
+            suggested_versions=$(echo "$suggested_output" | tr -d '[]"' | tr ',' '\n' | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//' | grep -E '^[0-9]+$')
+          else
+            # Fallback: assume it's already in simple format
+            suggested_versions=$(echo "$suggested_output" | tr ',' '\n' | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//' | grep -E '^[0-9]+$')
+          fi
+          
+          # Combine current and suggested versions, remove duplicates, sort numerically
+          all_versions=$(echo -e "$current_versions\n$suggested_versions" | grep -E '^[0-9]+$' | sort -n | uniq | tr '\n' ',' | sed 's/,$//')
+          
+          echo "Current versions: $current_versions" | tr '\n' ' '
+          echo "Suggested versions: $suggested_versions" | tr '\n' ' ' 
+          echo "Combined versions: $all_versions"
+          
+          # Update the workflow file if there are changes
+          if [ -n "$all_versions" ]; then
+            new_matrix="node-version: [${all_versions}]"
+            sed -i "s/node-version: \[[^]]*\]/$new_matrix/" .github/workflows/nodejs.yml
+            echo "versions=[$all_versions]" >> $GITHUB_OUTPUT
+          else
+            echo "No valid versions found, skipping update"
+            exit 1
+          fi
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ github.token }}
+          commit-message: "chore: update Node.js versions to ${{ steps.update-versions.outputs.versions }}"
+          title: "chore: update Node.js versions"
+          body: |
+            Automated changes by [update-node-versions](https://github.com/hongaar/update-node-versions) GitHub action
+            
+            Updated Node.js versions to: ${{ steps.update-versions.outputs.versions }}
+            
+            This ensures the CI matrix uses current and supported LTS versions of Node.js.
+          branch: update-node-versions
+          delete-branch: true
