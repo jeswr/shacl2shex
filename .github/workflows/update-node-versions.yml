@@ -83,28 +83,27 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
-          # Delete existing branch if it exists
-          git push origin --delete update-node-versions || true
-          git branch -D update-node-versions || true
+          # Create unique branch name based on versions
+          versions_clean=$(echo "${{ steps.update-versions.outputs.versions }}" | tr -d '[]" ' | tr ',' '-')
+          branch_name="update-node-versions-${versions_clean}"
           
           # Create and switch to update branch
-          git checkout -b update-node-versions
+          git checkout -b "$branch_name"
           
           # Add and commit changes
           git add .github/workflows/nodejs.yml
           git commit -m "chore: update Node.js versions to ${{ steps.update-versions.outputs.versions }}"
           
           # Push the branch
-          git push origin update-node-versions
+          git push origin "$branch_name"
           
-          # Close existing PR if it exists, then create new one
-          gh pr close update-node-versions || true
+          # Create pull request using gh CLI
           gh pr create \
-            --title "chore: update Node.js versions" \
+            --title "chore: update Node.js versions to ${{ steps.update-versions.outputs.versions }}" \
             --body "Automated changes by [update-node-versions](https://github.com/hongaar/update-node-versions) GitHub action
 
           Updated Node.js versions to: ${{ steps.update-versions.outputs.versions }}
 
           This ensures the CI matrix uses current and supported LTS versions of Node.js." \
-            --head update-node-versions \
+            --head "$branch_name" \
             --base main
