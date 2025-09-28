@@ -15,7 +15,7 @@ it('CJS build (dist/index.js) works', async () => {
 
   const { store, prefixes } = await dereferenceToStore(inputPath, { localFiles: true });
   const schema = await cjs.shaclStoreToShexSchema(store as any);
-  await expect(cjs.writeShexSchema(schema, prefixes)).resolves.toEqual(expectedShex);
+  await expect(cjs.writeShexSchema(schema, prefixes, store as any)).resolves.toEqual(expectedShex);
 });
 
 it('ESM build (dist/index.mjs) works', async () => {
@@ -34,7 +34,7 @@ const require = createRequire(process.env.PROJECT_ROOT + '/package.json');
 const deref = require('rdf-dereference-store').default;
 const { store, prefixes } = await deref(inputPath, { localFiles: true });
 const schema = await mod.shaclStoreToShexSchema(store);
-const shex = await mod.writeShexSchema(schema, prefixes);
+const shex = await mod.writeShexSchema(schema, prefixes, store);
 const expected = fs.readFileSync(expectedPath, 'utf-8');
 if (shex !== expected) {
   console.error('Mismatch between ESM output and expected');

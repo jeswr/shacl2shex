@@ -20,13 +20,13 @@ async function convertToShex(inPath: string, outPath: string, generateShapeMap: 
   if (!schema.shapes || schema.shapes.length === 0) {
     throw new Error(`No shapes found in ${inPath}`);
   }
-  fs.writeFileSync(outPath, await writeShexSchema(schema, prefixes));
+  fs.writeFileSync(outPath, await writeShexSchema(schema, prefixes, store as Store));
 
   // Generate ShapeMap if requested
   if (generateShapeMap) {
     const shapeMap = shapeMapFromDataset(store as Store);
     const shapeMapPath = outPath.replace(/\.shex$/, '.shapemap') + (outPath.endsWith('.shex') ? '' : '.shapemap');
-    fs.writeFileSync(shapeMapPath, writeShapeMap(shapeMap, prefixes));
+    fs.writeFileSync(shapeMapPath, writeShapeMap(shapeMap, prefixes, store as Store));
     console.log(`Generated ShapeMap: ${shapeMapPath}`);
   }
 }

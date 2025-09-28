@@ -14,14 +14,14 @@ it.each(files)('should convert %s', async (file) => {
   const store = await dereferenceToStore(path.join(__dirname, file), { localFiles: true });
   const expectedShex = fs.readFileSync(path.join(__dirname, file.replace(/\.(shaclc|shce)$/, '.shex')), 'utf-8');
   const shexSchema = await shaclStoreToShexSchema(store.store);
-  await expect(writeShexSchema(shexSchema, store.prefixes)).resolves.toEqual(expectedShex);
+  await expect(writeShexSchema(shexSchema, store.prefixes, store.store)).resolves.toEqual(expectedShex);
 
   // Check if there's an expected ShapeMap file
   const shapeMapPath = path.join(__dirname, file.replace(/\.(shaclc|shce)$/, '.shapemap'));
   if (fs.existsSync(shapeMapPath)) {
     const expectedShapeMap = fs.readFileSync(shapeMapPath, 'utf-8');
     const shapeMap = shapeMapFromDataset(store.store);
-    expect(writeShapeMap(shapeMap, store.prefixes)).toEqual(expectedShapeMap);
+    expect(writeShapeMap(shapeMap, store.prefixes, store.store)).toEqual(expectedShapeMap);
   }
 });
 

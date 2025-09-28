@@ -340,8 +340,55 @@ export async function shaclStoreToShexSchema(shapeStore: Store): Promise<Schema>
   };
 }
 
-export function writeShexSchema(schema: any, prefixes?: Record<string, string>) {
-  const shexWriter = new Writer({ prefixes }, {});
+/**
+ * Filters prefixes to exclude only those that are auto-generated but not explicitly declared
+ */
+function filterUsedPrefixes(schema: Schema, prefixes: Record<string, string>, store?: Store): Record<string, string> {
+  if (!store) {
+    return prefixes;
+  }
+
+  const filteredPrefixes: Record<string, string> = {};
+
+  // Get all prefixes that are NOT auto-added metadata
+  for (const [prefix, uri] of Object.entries(prefixes)) {
+    let shouldInclude = true;
+
+    // Always include standard prefixes
+    if (['rdf', 'rdfs', 'xsd', 'sh'].includes(prefix)) {
+      shouldInclude = true;
+    } else if (prefix === 'owl' && uri === 'http://www.w3.org/2002/07/owl#') {
+      // Check if owl is only used for metadata (like owl:Ontology) and not in actual SHACL constructs
+      let hasNonMetadataUsage = false;
+      for (const quad of store.match(null, null, null)) {
+        const subjectValue = quad.subject.value;
+        const predicateValue = quad.predicate.value;
+        const objectValue = quad.object.termType === 'NamedNode' ? quad.object.value : '';
+
+        if (subjectValue.startsWith(uri) || predicateValue.startsWith(uri) || objectValue.startsWith(uri)) {
+          // Check if this is just metadata usage
+          if (!(predicateValue === 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type'
+                && objectValue === 'http://www.w3.org/2002/07/owl#Ontology')) {
+            hasNonMetadataUsage = true;
+            break;
+          }
+        }
+      }
+      shouldInclude = hasNonMetadataUsage;
+    }
+
+    if (shouldInclude) {
+      filteredPrefixes[prefix] = uri;
+    }
+  }
+
+  return filteredPrefixes;
+}
+
+export function writeShexSchema(schema: any, prefixes?: Record<string, string>, store?: Store) {
+  // Filter prefixes to only include those that are actually used
+  const filteredPrefixes = prefixes ? filterUsedPrefixes(schema, prefixes, store) : undefined;
+  const shexWriter = new Writer({ prefixes: filteredPrefixes }, {});
   return new Promise<string>((resolve, reject) => {
     shexWriter.writeSchema(
       schema,

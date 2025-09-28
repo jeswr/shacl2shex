@@ -11,6 +11,51 @@ import { shapeFromDataset } from './shapeFromDataset';
 const { namedNode, defaultGraph } = DataFactory;
 
 /**
+ * Filters prefixes to exclude only those that are auto-generated but not explicitly declared
+ */
+function filterUsedPrefixes(prefixes: Record<string, string>, store?: Store): Record<string, string> {
+  if (!store) {
+    return prefixes;
+  }
+
+  const filteredPrefixes: Record<string, string> = {};
+
+  // Get all prefixes that are NOT auto-added metadata
+  for (const [prefix, uri] of Object.entries(prefixes)) {
+    let shouldInclude = true;
+
+    // Always include standard prefixes
+    if (['rdf', 'rdfs', 'xsd', 'sh'].includes(prefix)) {
+      shouldInclude = true;
+    } else if (prefix === 'owl' && uri === 'http://www.w3.org/2002/07/owl#') {
+      // Check if owl is only used for metadata (like owl:Ontology) and not in actual SHACL constructs
+      let hasNonMetadataUsage = false;
+      for (const quad of store.match(null, null, null)) {
+        const subjectValue = quad.subject.value;
+        const predicateValue = quad.predicate.value;
+        const objectValue = quad.object.termType === 'NamedNode' ? quad.object.value : '';
+
+        if (subjectValue.startsWith(uri) || predicateValue.startsWith(uri) || objectValue.startsWith(uri)) {
+          // Check if this is just metadata usage
+          if (!(predicateValue === 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type'
+                && objectValue === 'http://www.w3.org/2002/07/owl#Ontology')) {
+            hasNonMetadataUsage = true;
+            break;
+          }
+        }
+      }
+      shouldInclude = hasNonMetadataUsage;
+    }
+
+    if (shouldInclude) {
+      filteredPrefixes[prefix] = uri;
+    }
+  }
+
+  return filteredPrefixes;
+}
+
+/**
  * A ShapeMap entry that associates RDF nodes with shapes for validation
  * Based on the ShapeMap specification: https://shexspec.github.io/shape-map/
  */
@@ -122,7 +167,7 @@ export function shapeMapFromDataset(shapeStore: Store): ShapeMap {
  * // Output: "FOCUS rdf:type ex:Person@ex:PersonShape"
  * ```
  */
-export function writeShapeMap(shapeMap: ShapeMap, prefixes?: Record<string, string>): string {
+export function writeShapeMap(shapeMap: ShapeMap, prefixes?: Record<string, string>, store?: Store): string {
   if (shapeMap.entries.length === 0) {
     return '# No shape mappings found\n';
   }
@@ -132,9 +177,12 @@ export function writeShapeMap(shapeMap: ShapeMap, prefixes?: Record<string, stri
   output += '# Based on: https://shexspec.github.io/shape-map/\n';
   output += '# Format: {node pattern}@{shape}\n\n';
 
+  // Filter prefixes to exclude auto-generated ones
+  const filteredPrefixes = prefixes ? filterUsedPrefixes(prefixes, store) : undefined;
+
   // Add prefix declarations if provided
-  if (prefixes) {
-    for (const [prefix, iri] of Object.entries(prefixes)) {
+  if (filteredPrefixes) {
+    for (const [prefix, iri] of Object.entries(filteredPrefixes)) {
       if (prefix && prefix !== 'base') {
         output += `PREFIX ${prefix}: <${iri}>\n`;
       }
@@ -148,8 +196,8 @@ export function writeShapeMap(shapeMap: ShapeMap, prefixes?: Record<string, stri
     let shapeId = entry.shape;
 
     // Apply prefix compression if available
-    if (prefixes) {
-      for (const [prefix, iri] of Object.entries(prefixes)) {
+    if (filteredPrefixes) {
+      for (const [prefix, iri] of Object.entries(filteredPrefixes)) {
         if (prefix && prefix !== 'base') {
           const iriPattern = new RegExp(`<${iri.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^>]*)>`, 'g');
           nodePattern = nodePattern.replace(iriPattern, `${prefix}:$1`);
