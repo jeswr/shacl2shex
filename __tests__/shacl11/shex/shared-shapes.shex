@@ -1,4 +1,5 @@
 PREFIX ex: <http://datashapes.org/sh/tests/core/misc/shared-shapes.test#>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
 
 # Shared shapes in ShEx
 ex:SharedShape {
