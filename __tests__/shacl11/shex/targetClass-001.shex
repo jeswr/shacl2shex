@@ -1,4 +1,5 @@
 PREFIX ex: <http://datashapes.org/sh/tests/core/targets/targetClass-001.test#>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
 
 ex:MyShape {
   ex:myProperty . ?

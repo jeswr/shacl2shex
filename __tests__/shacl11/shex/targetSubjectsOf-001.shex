@@ -1,4 +1,5 @@
 PREFIX ex: <http://datashapes.org/sh/tests/core/targets/targetSubjectsOf-001.test#>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
 
 # Note: ShEx doesn't have targetSubjectsOf
 # This would be applied to subjects of the specified property
