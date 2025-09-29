@@ -1,4 +1,5 @@
 PREFIX sh: <http://www.w3.org/ns/shacl#>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
 
 # Note: This is a meta-schema for SHACL itself
 # ShEx equivalent would be very complex

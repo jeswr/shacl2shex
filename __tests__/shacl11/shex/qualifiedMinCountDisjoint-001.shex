@@ -1,4 +1,5 @@
 PREFIX ex: <http://datashapes.org/sh/tests/core/property/qualifiedMinCountDisjoint-001.test#>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
 
 # Note: ShEx doesn't have direct equivalents for qualified cardinality constraints
 # This would need to be enforced at the application level

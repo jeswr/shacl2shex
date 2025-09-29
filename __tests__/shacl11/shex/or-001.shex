@@ -1,5 +1,6 @@
 PREFIX ex: <http://datashapes.org/sh/tests/core/node/or-001.test#>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
 
 ex:RectangleWithArea {
   (

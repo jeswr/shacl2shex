@@ -1,5 +1,6 @@
 PREFIX ex: <http://example.org/shacl-test/>
 PREFIX sh: <http://www.w3.org/ns/shacl#>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
 
 # Note: ShEx doesn't have direct equivalents for qualified cardinality constraints
 # sh:qualifiedValueShapesDisjoint, sh:qualifiedMinCount, sh:qualifiedMaxCount

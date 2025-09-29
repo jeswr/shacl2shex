@@ -1,5 +1,6 @@
 PREFIX ex: <http://datashapes.org/sh/tests/core/property/minInclusive-002.test#>
 PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
 
 ex:TestShape {
   ex:property xsd:date MININCLUSIVE "2000-01-01"^^xsd:date

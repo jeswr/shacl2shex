@@ -1,4 +1,5 @@
 PREFIX ex: <http://datashapes.org/sh/tests/core/property/lessThan-001.test#>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
 
 # Note: ShEx doesn't have a direct equivalent for lessThan constraint between properties
 # This would need to be enforced at the application level

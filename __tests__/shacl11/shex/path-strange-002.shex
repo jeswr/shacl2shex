@@ -1,4 +1,5 @@
 PREFIX ex: <http://datashapes.org/sh/tests/core/path/path-strange-002.test#>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
 
 # Note: ShEx doesn't support complex SHACL paths
 # This would need to be modeled differently

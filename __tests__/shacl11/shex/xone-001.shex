@@ -1,5 +1,6 @@
 PREFIX ex: <http://datashapes.org/sh/tests/core/node/xone-001.test#>
 PREFIX sh: <http://www.w3.org/ns/shacl#>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
 
 # ShEx doesn't have direct xone (exactly one) support
 # This approximates it with oneOf
