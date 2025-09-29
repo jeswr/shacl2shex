@@ -70,16 +70,40 @@ jobs:
           fi
 
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v7
-        with:
-          token: ${{ github.token }}
-          commit-message: "chore: update Node.js versions to ${{ steps.update-versions.outputs.versions }}"
-          title: "chore: update Node.js versions"
-          body: |
-            Automated changes by [update-node-versions](https://github.com/hongaar/update-node-versions) GitHub action
-            
-            Updated Node.js versions to: ${{ steps.update-versions.outputs.versions }}
-            
-            This ensures the CI matrix uses current and supported LTS versions of Node.js.
-          branch: update-node-versions
-          delete-branch: true
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          # Check if there are any changes
+          if git diff --quiet; then
+            echo "No changes detected, skipping PR creation"
+            exit 0
+          fi
+          
+          # Configure git
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Create unique branch name based on versions
+          versions_clean=$(echo "${{ steps.update-versions.outputs.versions }}" | tr -d '[]" ' | tr ',' '-')
+          branch_name="update-node-versions-${versions_clean}"
+          
+          # Create and switch to update branch
+          git checkout -b "$branch_name"
+          
+          # Add and commit changes
+          git add .github/workflows/nodejs.yml
+          git commit -m "chore: update Node.js versions to ${{ steps.update-versions.outputs.versions }}"
+          
+          # Push the branch
+          git push origin "$branch_name"
+          
+          # Create pull request using gh CLI
+          gh pr create \
+            --title "chore: update Node.js versions to ${{ steps.update-versions.outputs.versions }}" \
+            --body "Automated changes by [update-node-versions](https://github.com/hongaar/update-node-versions) GitHub action
+
+          Updated Node.js versions to: ${{ steps.update-versions.outputs.versions }}
+
+          This ensures the CI matrix uses current and supported LTS versions of Node.js." \
+            --head "$branch_name" \
+            --base main
