@@ -16,7 +16,7 @@ jobs:
       actions: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           # Use a token with workflow permissions to update workflows
           token: ${{ secrets.GH_TOKEN }}
