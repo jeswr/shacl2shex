@@ -323,10 +323,11 @@ export async function shaclStoreToShexSchema(shapeStore: Store): Promise<Schema>
 
         if (logicalExprs.length > 0) {
           let shapeExpr: shapeExprOrRef;
+          if (logicalOp === 'xone') {
+            console.warn(XONE_TO_OR_WARNING);
+          }
+
           if (logicalOp === 'or' || logicalOp === 'xone') {
-            if (logicalOp === 'xone') {
-              console.warn(XONE_TO_OR_WARNING);
-            }
             shapeExpr = {
               type: 'ShapeOr',
               shapeExprs: logicalExprs,
