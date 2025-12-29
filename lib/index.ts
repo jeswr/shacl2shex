@@ -14,6 +14,7 @@ export { shapeMapFromDataset, writeShapeMap } from './shapeMapFromDataset';
 export type { ShapeMap, ShapeMapEntry } from './shapeMapFromDataset';
 
 const { namedNode, defaultGraph } = DataFactory;
+const XONE_TO_OR_WARNING = 'sh:xone converted to ShEx OR (not exact semantics)';
 
 function getSingleObjectOfType(
   store: DatasetCore,
@@ -112,7 +113,7 @@ function processConstraintToValueExpr(
 
       if (xoneExprs.length > 0) {
         // Note: ShEx doesn't have xone, using OR as approximation
-        console.warn('sh:xone converted to ShEx OR (not exact semantics)');
+        console.warn(XONE_TO_OR_WARNING);
         return {
           type: 'ShapeOr',
           shapeExprs: xoneExprs,
@@ -324,7 +325,7 @@ export async function shaclStoreToShexSchema(shapeStore: Store): Promise<Schema>
           let shapeExpr: shapeExprOrRef;
           if (logicalOp === 'or' || logicalOp === 'xone') {
             if (logicalOp === 'xone') {
-              console.warn('sh:xone converted to ShEx OR (not exact semantics)');
+              console.warn(XONE_TO_OR_WARNING);
             }
             shapeExpr = {
               type: 'ShapeOr',
@@ -381,7 +382,7 @@ export async function shaclStoreToShexSchema(shapeStore: Store): Promise<Schema>
         if (inversePath) {
           return {
             type: 'TripleConstraint',
-            predicate: pathElem.value,
+            predicate: inversePath.value,
             valueExpr: safeValueExpr,
             inverse: true,
             // FIXME: Int checks etc should be done here
@@ -426,40 +427,18 @@ export async function shaclStoreToShexSchema(shapeStore: Store): Promise<Schema>
         if (alternativePath) {
           const list = shapeStore.extractLists()[alternativePath.value];
           if (list && list.length > 0) {
-            // Create a ShapeOr with each alternative path
-            const alternatives: any[] = list.map((altPath) => {
-              if (altPath.termType === 'NamedNode') {
-                return {
-                  type: 'Shape' as const,
-                  expression: {
-                    type: 'TripleConstraint' as const,
-                    predicate: altPath.value,
-                    valueExpr: safeValueExpr,
-                    min: shapeData.minCount ?? 0,
-                    max: shapeData.maxCount ?? -1,
-                  },
-                };
-              }
-              return undefined;
-            }).filter((alt) => alt !== undefined);
-
-            if (alternatives.length > 0) {
-              // Return a triple constraint with a ShapeOr valueExpr
-              // This is a workaround since ShEx doesn't directly support alternative predicates in the same way
-              // We'll use the first predicate and wrap the entire thing
-              const firstPred = list[0];
-              if (firstPred.termType === 'NamedNode') {
-                return {
-                  type: 'TripleConstraint',
-                  predicate: firstPred.value,
-                  valueExpr: {
-                    type: 'ShapeOr',
-                    shapeExprs: alternatives,
-                  },
-                  min: shapeData.minCount ?? 0,
-                  max: shapeData.maxCount ?? -1,
-                };
-              }
+            // For alternative paths, we can't directly represent them in ShEx
+            // The best approximation is to use ShapeOr at the parent level, not as a TripleConstraint
+            // So we'll log a warning and use the first path as a fallback
+            console.warn('sh:alternativePath has limited ShEx support, using first alternative:', list[0].value);
+            if (list[0].termType === 'NamedNode') {
+              return {
+                type: 'TripleConstraint',
+                predicate: list[0].value,
+                valueExpr: safeValueExpr,
+                min: shapeData.minCount ?? 0,
+                max: shapeData.maxCount ?? -1,
+              };
             }
           }
         }
