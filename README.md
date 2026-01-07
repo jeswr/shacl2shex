@@ -26,9 +26,23 @@ const shapeMap = shapeMapFromDataset(store);
 console.log(writeShapeMap(shapeMap, prefixes));
 ```
 
-:warning: This library is hacked together. Unsupported features include:
- - `sh:or`, `sh:and` and `sh:xone`
- - Property paths
+## Supported Features
+
+This library now supports comprehensive SHACL to ShEx conversion including:
+
+- **Logical operators**: `sh:or`, `sh:and`, `sh:xone` (xone approximated as OR), `sh:not`
+- **Property paths**: `sh:inversePath`, `sh:alternativePath`, `sh:oneOrMorePath`, `sh:zeroOrMorePath`, `sh:zeroOrOnePath`
+- **Value constraints**: `sh:datatype`, `sh:class`, `sh:nodeKind`, `sh:in`, `sh:hasValue`
+- **String constraints**: `sh:minLength`, `sh:maxLength`, `sh:pattern` (with `sh:flags`)
+- **Numeric constraints**: `sh:minInclusive`, `sh:maxInclusive`, `sh:minExclusive`, `sh:maxExclusive`
+- **Cardinality constraints**: `sh:minCount`, `sh:maxCount`
+- **Target definitions**: `sh:targetClass`, `sh:targetNode`, `sh:targetObjectsOf`, `sh:targetSubjectsOf`
+
+**Note**: Some SHACL features have semantic differences when mapped to ShEx:
+- `sh:xone` (exclusive or) is approximated using ShEx OR, as ShEx doesn't have native exclusive or semantics
+- Sequence property paths have limited support
+- SHACL comparison constraints (`sh:equals`, `sh:disjoint`, `sh:lessThan`, etc.) are not directly expressible in ShEx
+- `sh:closed` and `sh:uniqueLang` have limited ShEx equivalents
 
 ## CLI Usage
 
