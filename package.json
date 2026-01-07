@@ -112,7 +112,7 @@
     "@shexjs/validator": "^1.0.0-alpha.29",
     "@shexjs/writer": "^1.0.0-alpha.27",
     "commander": "^14.0.0",
-    "n3": "^1.17.3",
+    "n3": "^2.0.0",
     "rdf-dereference-store": "^1.0.0",
     "rdf-namespaces": "^1.12.0"
   },
