@@ -1,11 +1,9 @@
-import { Schema } from 'shexj';
-
 /**
  * =============================================================================
  * ShaclSchema: ShexJ Schema for Shacl
  * =============================================================================
  */
-export const ShaclSchema: Schema = {
+export const ShaclSchema = {
   type: 'Schema',
   shapes: [
     {
@@ -141,7 +139,6 @@ export const ShaclSchema: Schema = {
               predicate: 'http://www.w3.org/ns/shacl#maxExclusive',
               valueExpr: {
                 type: 'NodeConstraint',
-                nodeKind: 'literal',
               },
               min: 0,
               max: 1,
@@ -151,7 +148,6 @@ export const ShaclSchema: Schema = {
               predicate: 'http://www.w3.org/ns/shacl#maxInclusive',
               valueExpr: {
                 type: 'NodeConstraint',
-                nodeKind: 'literal',
               },
               min: 0,
               max: 1,
@@ -181,7 +177,6 @@ export const ShaclSchema: Schema = {
               predicate: 'http://www.w3.org/ns/shacl#minExclusive',
               valueExpr: {
                 type: 'NodeConstraint',
-                nodeKind: 'literal',
               },
               min: 0,
               max: 1,
@@ -191,7 +186,6 @@ export const ShaclSchema: Schema = {
               predicate: 'http://www.w3.org/ns/shacl#minInclusive',
               valueExpr: {
                 type: 'NodeConstraint',
-                nodeKind: 'literal',
               },
               min: 0,
               max: 1,
@@ -265,8 +259,7 @@ export const ShaclSchema: Schema = {
             },
             {
               type: 'TripleConstraint',
-              predicate:
-                'http://www.w3.org/ns/shacl#qualifiedValueShapesDisjoint',
+              predicate: 'http://www.w3.org/ns/shacl#qualifiedValueShapesDisjoint',
               valueExpr: {
                 type: 'NodeConstraint',
                 datatype: 'http://www.w3.org/2001/XMLSchema#boolean',
@@ -283,6 +276,34 @@ export const ShaclSchema: Schema = {
               },
               min: 0,
               max: 1,
+            },
+            {
+              type: 'TripleConstraint',
+              predicate: 'http://www.w3.org/ns/shacl#and',
+              valueExpr: 'http://www.w3.org/ns/shacl-shacl#ShapeShape',
+              min: 0,
+              max: -1,
+            },
+            {
+              type: 'TripleConstraint',
+              predicate: 'http://www.w3.org/ns/shacl#or',
+              valueExpr: 'http://www.w3.org/ns/shacl-shacl#ShapeShape',
+              min: 0,
+              max: -1,
+            },
+            {
+              type: 'TripleConstraint',
+              predicate: 'http://www.w3.org/ns/shacl#not',
+              valueExpr: 'http://www.w3.org/ns/shacl-shacl#ShapeShape',
+              min: 0,
+              max: 1,
+            },
+            {
+              type: 'TripleConstraint',
+              predicate: 'http://www.w3.org/ns/shacl#xone',
+              valueExpr: 'http://www.w3.org/ns/shacl-shacl#ShapeShape',
+              min: 0,
+              max: -1,
             },
           ],
         },
