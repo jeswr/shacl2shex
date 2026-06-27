@@ -1,0 +1,12 @@
+PREFIX ex: <http://example.org/test#>
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+PREFIX sh: <http://www.w3.org/ns/shacl#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+ex:PersonShape @ex:NameConstraint AND @ex:AgeConstraint
+ex:NameConstraint {
+(    foaf:name xsd:string{1,1})
+}
+ex:AgeConstraint {
+(    foaf:age xsd:integer{1,1})
+}

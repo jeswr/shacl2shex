@@ -5,7 +5,7 @@ import { DataFactory, Store } from 'n3';
 import { rdf, shacl } from 'rdf-namespaces';
 import type {
   Schema, ShapeDecl,
-  TripleConstraint, shapeExprOrRef,
+  TripleConstraint, shapeExprOrRef, shapeExpr,
 } from 'shexj';
 import { ShapeShapeShapeType } from './ldo/Shacl.shapeTypes';
 import { shapeFromDataset } from './shapeFromDataset';
@@ -32,6 +32,191 @@ function getSingleObjectOfType(
   return objects[0].object;
 }
 
+function extractRdfList(store: DatasetCore, listNode: Term): Term[] {
+  const result: Term[] = [];
+  let current = listNode;
+  
+  while (current && current.termType === 'BlankNode') {
+    const firstTriples = store.match(current, namedNode(rdf.first), null, defaultGraph());
+    const restTriples = store.match(current, namedNode(rdf.rest), null, defaultGraph());
+    
+    if (firstTriples.size === 0) break;
+    
+    const first = [...firstTriples][0].object;
+    const rest = restTriples.size > 0 ? [...restTriples][0].object : null;
+    
+    if (first) {
+      result.push(first);
+    }
+    
+    if (!rest || rest.value === 'http://www.w3.org/1999/02/22-rdf-syntax-ns#nil') {
+      break;
+    }
+    
+    current = rest;
+  }
+  
+  return result;
+}
+
+function processLogicalConstraints(
+  shapeStore: DatasetCore,
+  shape: Term,
+  shapeTargetMap: Map<string, string>
+): shapeExprOrRef | undefined {
+  // Only process NamedNode or BlankNode terms
+  if (shape.termType !== 'NamedNode' && shape.termType !== 'BlankNode') {
+    return undefined;
+  }
+  
+  // Check for sh:and
+  const andTriples = shapeStore.match(shape, namedNode(shacl.and), null, defaultGraph());
+  if (andTriples.size > 0) {
+    const andList = [...andTriples][0].object;
+    const andShapes = extractRdfList(shapeStore, andList);
+    
+    if (andShapes.length > 0) {
+      const andExprs: shapeExprOrRef[] = [];
+      for (const andShape of andShapes) {
+        if (andShape.termType !== 'NamedNode') continue;
+        
+        // Check if it's a reference to an existing shape
+        if (shapeStore.match(andShape, namedNode(rdf.type), namedNode(shacl.NodeShape), defaultGraph()).size > 0) {
+          andExprs.push(andShape.value);
+        } else {
+          // Process inline shape
+          const expr = processLogicalConstraints(shapeStore, andShape, shapeTargetMap);
+          if (expr) {
+            andExprs.push(expr);
+          }
+        }
+      }
+      
+      if (andExprs.length > 0) {
+        return {
+          type: 'ShapeAnd',
+          shapeExprs: andExprs,
+        };
+      }
+    }
+  }
+  
+  // Check for sh:or
+  const orTriples = shapeStore.match(shape, namedNode(shacl.or), null, defaultGraph());
+  if (orTriples.size > 0) {
+    const orList = [...orTriples][0].object;
+    const orShapes = extractRdfList(shapeStore, orList);
+    
+    if (orShapes.length > 0) {
+      const orExprs: shapeExprOrRef[] = [];
+      for (const orShape of orShapes) {
+        if (orShape.termType !== 'NamedNode') continue;
+        
+        // Check if it's a reference to an existing shape
+        if (shapeStore.match(orShape, namedNode(rdf.type), namedNode(shacl.NodeShape), defaultGraph()).size > 0) {
+          orExprs.push(orShape.value);
+        } else {
+          // Process inline shape
+          const expr = processLogicalConstraints(shapeStore, orShape, shapeTargetMap);
+          if (expr) {
+            orExprs.push(expr);
+          }
+        }
+      }
+      
+      if (orExprs.length > 0) {
+        return {
+          type: 'ShapeOr',
+          shapeExprs: orExprs,
+        };
+      }
+    }
+  }
+  
+  // Check for sh:not
+  const notTriples = shapeStore.match(shape, namedNode(shacl.not), null, defaultGraph());
+  if (notTriples.size > 0) {
+    const notShape = [...notTriples][0].object;
+    if (notShape.termType !== 'NamedNode') return undefined;
+    
+    let notExpr: shapeExprOrRef;
+    // Check if it's a reference to an existing shape
+    if (shapeStore.match(notShape, namedNode(rdf.type), namedNode(shacl.NodeShape), defaultGraph()).size > 0) {
+      notExpr = notShape.value;
+    } else {
+      // Process inline shape
+      const expr = processLogicalConstraints(shapeStore, notShape, shapeTargetMap);
+      if (expr) {
+        notExpr = expr;
+      } else {
+        return undefined;
+      }
+    }
+    
+    return {
+      type: 'ShapeNot',
+      shapeExpr: notExpr,
+    };
+  }
+  
+  // Check for sh:xone
+  const xoneTriples = shapeStore.match(shape, namedNode(shacl.xone), null, defaultGraph());
+  if (xoneTriples.size > 0) {
+    const xoneList = [...xoneTriples][0].object;
+    const xoneShapes = extractRdfList(shapeStore, xoneList);
+    
+    if (xoneShapes.length > 0) {
+      const xoneExprs: shapeExprOrRef[] = [];
+      for (const xoneShape of xoneShapes) {
+        if (xoneShape.termType !== 'NamedNode') continue;
+        
+        let expr: shapeExprOrRef;
+        // Check if it's a reference to an existing shape
+        if (shapeStore.match(xoneShape, namedNode(rdf.type), namedNode(shacl.NodeShape), defaultGraph()).size > 0) {
+          expr = xoneShape.value;
+        } else {
+          // Process inline shape
+          const processed = processLogicalConstraints(shapeStore, xoneShape, shapeTargetMap);
+          if (processed) {
+            expr = processed;
+          } else {
+            continue;
+          }
+        }
+        xoneExprs.push(expr);
+      }
+      
+      if (xoneExprs.length > 0) {
+        // Implement xone as (A AND NOT (B OR C)) OR (B AND NOT (A OR C)) OR (C AND NOT (A OR B))
+        const xoneTerms: shapeExprOrRef[] = [];
+        
+        for (let i = 0; i < xoneExprs.length; i++) {
+          const others = xoneExprs.filter((_, j) => j !== i);
+          if (others.length === 0) {
+            xoneTerms.push(xoneExprs[i]);
+          } else {
+            const notOthers: shapeExprOrRef = others.length === 1 
+              ? { type: 'ShapeNot', shapeExpr: others[0] }
+              : { type: 'ShapeNot', shapeExpr: { type: 'ShapeOr', shapeExprs: others } };
+            
+            xoneTerms.push({
+              type: 'ShapeAnd',
+              shapeExprs: [xoneExprs[i], notOthers],
+            });
+          }
+        }
+        
+        return xoneTerms.length === 1 ? xoneTerms[0] : {
+          type: 'ShapeOr',
+          shapeExprs: xoneTerms,
+        };
+      }
+    }
+  }
+  
+  return undefined;
+}
+
 export async function shaclStoreToShexSchema(shapeStore: Store): Promise<Schema> {
   const shexShapes: ShapeDecl[] = [];
 
@@ -51,6 +236,18 @@ export async function shaclStoreToShexSchema(shapeStore: Store): Promise<Schema>
   for (const { subject: shape } of
     shapeStore.match(null, namedNode(rdf.type), namedNode(shacl.NodeShape), defaultGraph())
   ) {
+    // First check if this shape has logical constraints
+    const logicalExpr = processLogicalConstraints(shapeStore, shape, shapeTargetMap);
+    if (logicalExpr) {
+      // If the shape has logical constraints, use them as the shape expression
+      shexShapes.push({
+        id: shape.value,
+        type: 'ShapeDecl',
+        shapeExpr: logicalExpr as any,
+      });
+      continue;
+    }
+    
     // Extract shape-level constraints
     const shapeNodeKind = shapeStore.getObjects(shape, namedNode(shacl.nodeKind), defaultGraph());
 
@@ -70,14 +267,21 @@ export async function shaclStoreToShexSchema(shapeStore: Store): Promise<Schema>
       };
 
       if (shapeData.nodeKind) {
-        valueExpr.nodeKind = ({
+        const nodeKindId = shapeData.nodeKind['@id'];
+        const nodeKindShortName = nodeKindId.startsWith('http://www.w3.org/ns/shacl#') 
+          ? nodeKindId.substring('http://www.w3.org/ns/shacl#'.length)
+          : nodeKindId;
+        
+        const nodeKindMap = {
           IRI: 'iri',
           Literal: 'literal',
           BlankNode: 'bnode',
           BlankNodeOrIRI: 'nonliteral',
           IRIOrLiteral: undefined,
           BlankNodeOrLiteral: undefined,
-        } as const)[shapeData.nodeKind['@id']];
+        } as const;
+        
+        valueExpr.nodeKind = nodeKindMap[nodeKindShortName as keyof typeof nodeKindMap];
       }
       if (inValues.length === 1) {
         const list = shapeStore.extractLists()[inValues[0].value];
@@ -213,16 +417,6 @@ export async function shaclStoreToShexSchema(shapeStore: Store): Promise<Schema>
           };
         }
 
-        console.log(
-          shape,
-          getSingleObjectOfType(shapeStore, pathElem, namedNode('http://www.w3.org/ns/shacl#alternativePath')),
-          getSingleObjectOfType(shapeStore, pathElem, namedNode('http://www.w3.org/ns/shacl#zeroOrMorePath')),
-          getSingleObjectOfType(shapeStore, pathElem, namedNode('http://www.w3.org/ns/shacl#oneOrMorePath')),
-          getSingleObjectOfType(shapeStore, pathElem, namedNode('http://www.w3.org/ns/shacl#zeroOrOnePath')),
-          getSingleObjectOfType(shapeStore, pathElem, namedNode('http://www.w3.org/ns/shacl#inversePath')),
-          shapeStore.extractLists()[pathElem.value],
-        );
-
         throw new Error('Unsupported path');
       }
       try {
@@ -312,6 +506,12 @@ export async function shaclStoreToShexSchema(shapeStore: Store): Promise<Schema>
     } else if (shape.shapeExpr.type === 'ShapeAnd') {
       // ShapeAnd shapes need to check their component shapes
       // For now, we'll include them all, but this could be refined
+      shouldInclude = true;
+    } else if (shape.shapeExpr.type === 'ShapeOr') {
+      // ShapeOr shapes are always included
+      shouldInclude = true;
+    } else if (shape.shapeExpr.type === 'ShapeNot') {
+      // ShapeNot shapes are always included
       shouldInclude = true;
     } else if (shape.shapeExpr.type === 'Shape'
       && shape.shapeExpr?.expression
