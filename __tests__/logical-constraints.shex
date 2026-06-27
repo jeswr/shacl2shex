@@ -1,0 +1,12 @@
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX sh: <http://www.w3.org/ns/shacl#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+PREFIX ex: <http://example.org/test#>
+
+ex:IRIShape IRI 
+ex:LiteralShape LITERAL 
+ex:AndShape IRI  AND (@ex:IRIShape AND @ex:LiteralShape)
+ex:OrShape IRI  AND (@ex:IRIShape OR @ex:LiteralShape)
+ex:NotShape IRI  AND NOT @ex:IRIShape
+ex:XoneShape IRI  AND (@ex:IRIShape OR @ex:LiteralShape)
