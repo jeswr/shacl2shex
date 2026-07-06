@@ -85,6 +85,10 @@ export interface ShaclShapeBody {
   properties: ShaclProperty[];
   /** Whether `sh:deactivated true` is asserted (the shape validates nothing). */
   deactivated?: boolean;
+  /** Whether `sh:closed true` is asserted. */
+  closed?: boolean;
+  /** `sh:ignoredProperties` members (predicate IRIs allowed despite `sh:closed`). */
+  ignoredProperties: string[];
   /**
    * Names of constraint components present on the shape that ShEx cannot
    * express (`sh:equals`, `sh:disjoint`, `sh:lessThan`, `sh:lessThanOrEquals`,
@@ -106,6 +110,17 @@ export interface ShaclProperty extends ShaclShapeBody {
   minCount?: number;
   /** `sh:maxCount`, when it is a parseable integer. */
   maxCount?: number;
+  /**
+   * `sh:qualifiedValueShape`: a string when it references a declared node
+   * shape, otherwise the inline shape.
+   */
+  qualifiedValueShape?: ShaclProperty | string;
+  /** `sh:qualifiedMinCount`, when it is a parseable integer. */
+  qualifiedMinCount?: number;
+  /** `sh:qualifiedMaxCount`, when it is a parseable integer. */
+  qualifiedMaxCount?: number;
+  /** Whether `sh:qualifiedValueShapesDisjoint true` is asserted. */
+  qualifiedValueShapesDisjoint?: boolean;
 }
 
 /** A parsed SHACL node shape (an `sh:NodeShape` instance). */

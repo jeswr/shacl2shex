@@ -482,6 +482,11 @@ interface PropertyConversion {
   constraints: TripleConstraint[];
   /** Shape-expression conjuncts for the enclosing `ShapeDecl` (EXTRA idioms). */
   conjuncts: shapeExprOrRef[];
+  /**
+   * Predicates that only occur in conjuncts and therefore must still be
+   * mentioned in the main shape when it is CLOSED.
+   */
+  mentions: string[];
   /** False when any constraint was skipped, weakened or approximated. */
   exact: boolean;
 }
@@ -493,7 +498,9 @@ interface PropertyConversion {
 function convertProperty(property: ShaclProperty, targetShapes: Map<string, string>): PropertyConversion | undefined {
   // A deactivated shape validates nothing.
   if (property.deactivated) {
-    return { constraints: [], conjuncts: [], exact: true };
+    return {
+      constraints: [], conjuncts: [], mentions: [], exact: true,
+    };
   }
 
   const { parts, exact: partsExact } = bodyParts(property, targetShapes, {
@@ -503,6 +510,7 @@ function convertProperty(property: ShaclProperty, targetShapes: Map<string, stri
   let exact = partsExact;
   const valueExpr = combineParts(parts);
   const conjuncts: shapeExprOrRef[] = [];
+  const mentions: string[] = [];
 
   // sh:hasValue: at least one value equals v; other values stay unconstrained
   // thanks to EXTRA, so this must not live inside the main EachOf.
@@ -513,6 +521,9 @@ function convertProperty(property: ShaclProperty, targetShapes: Map<string, stri
         const conjunct = hasValueConjunct(path.predicate, path.kind === 'inverse', value, property.term);
         if (conjunct !== undefined) {
           conjuncts.push(conjunct);
+          if (path.kind === 'predicate') {
+            mentions.push(path.predicate);
+          }
         } else {
           exact = false;
         }
@@ -520,6 +531,56 @@ function convertProperty(property: ShaclProperty, targetShapes: Map<string, stri
     } else {
       console.warn('Skipping sh:hasValue over an unsupported sh:path on', property.term);
       exact = false;
+    }
+  }
+
+  // sh:qualifiedValueShape: some values match the qualified shape while
+  // others need not — exactly ShEx's EXTRA mechanism.
+  const hasQualified = property.qualifiedValueShape !== undefined
+    || property.qualifiedMinCount !== undefined
+    || property.qualifiedMaxCount !== undefined;
+  if (hasQualified) {
+    const { path } = property;
+    if (property.qualifiedValueShape === undefined) {
+      console.warn('Skipping qualified cardinality without sh:qualifiedValueShape on', property.term);
+      exact = false;
+    } else if (path?.kind !== 'predicate' && path?.kind !== 'inverse') {
+      console.warn('Skipping sh:qualifiedValueShape over an unsupported sh:path on', property.term);
+      exact = false;
+    } else {
+      const qualified: ExprResult = typeof property.qualifiedValueShape === 'string'
+        ? { expr: property.qualifiedValueShape, exact: true }
+        // eslint-disable-next-line no-use-before-define
+        : operandExpr(property.qualifiedValueShape, targetShapes);
+      if (qualified.expr === undefined) {
+        console.warn('Skipping unconvertible sh:qualifiedValueShape on', property.term);
+        exact = false;
+      } else {
+        exact = exact && qualified.exact;
+        if (property.qualifiedValueShapesDisjoint) {
+          console.warn('Ignoring sh:qualifiedValueShapesDisjoint (no ShEx counterpart) on', property.term);
+          exact = false;
+        }
+        if (property.qualifiedMaxCount !== undefined) {
+          console.warn('sh:qualifiedMaxCount is approximate under ShEx EXTRA semantics on', property.term);
+          exact = false;
+        }
+        const constraint: TripleConstraint = {
+          type: 'TripleConstraint',
+          predicate: path.predicate,
+          valueExpr: qualified.expr,
+          min: property.qualifiedMinCount ?? 0,
+          max: property.qualifiedMaxCount ?? -1,
+        };
+        if (path.kind === 'inverse') {
+          constraint.inverse = true;
+          // Unmatched inbound arcs never violate a shape: no EXTRA needed.
+          conjuncts.push({ type: 'Shape', expression: constraint });
+        } else {
+          conjuncts.push({ type: 'Shape', extra: [path.predicate], expression: constraint });
+          mentions.push(path.predicate);
+        }
+      }
     }
   }
 
@@ -531,7 +592,9 @@ function convertProperty(property: ShaclProperty, targetShapes: Map<string, stri
   const hasExplicitCounts = property.minCount !== undefined || property.maxCount !== undefined;
   if (valueExpr === undefined && !hasExplicitCounts) {
     if (conjuncts.length > 0) {
-      return { constraints: [], conjuncts, exact };
+      return {
+        constraints: [], conjuncts, mentions, exact,
+      };
     }
     console.warn('Unsupported property', property.term);
     return undefined;
@@ -539,9 +602,73 @@ function convertProperty(property: ShaclProperty, targetShapes: Map<string, stri
 
   const constraint = tripleConstraint(property, valueExpr);
   if (constraint === undefined) {
-    return conjuncts.length > 0 ? { constraints: [], conjuncts, exact: false } : undefined;
+    if (conjuncts.length === 0) {
+      return undefined;
+    }
+    return {
+      constraints: [], conjuncts, mentions, exact: false,
+    };
   }
-  return { constraints: [constraint], conjuncts, exact };
+  return {
+    constraints: [constraint], conjuncts, mentions, exact,
+  };
+}
+
+/**
+ * Merges triple constraints that share a predicate (and direction) into one:
+ * SHACL evaluates every property shape against all values of its path, while
+ * ShEx `EachOf` partitions the neighbourhood, so `p datatype xsd:string` and
+ * `p minCount 1` in separate property shapes must become a single constraint
+ * (conjoined value expression, strongest cardinality bounds).
+ */
+function mergeSamePredicate(constraints: TripleConstraint[]): TripleConstraint[] {
+  const groups = new Map<string, TripleConstraint[]>();
+  for (const constraint of constraints) {
+    const key = `${constraint.inverse ? '^' : ''}${constraint.predicate}`;
+    const group = groups.get(key);
+    if (group === undefined) {
+      groups.set(key, [constraint]);
+    } else {
+      group.push(constraint);
+    }
+  }
+  if (groups.size === constraints.length) {
+    return constraints;
+  }
+
+  const result: TripleConstraint[] = [];
+  const emitted = new Set<string>();
+  for (const constraint of constraints) {
+    const key = `${constraint.inverse ? '^' : ''}${constraint.predicate}`;
+    if (!emitted.has(key)) {
+      emitted.add(key);
+      const group = groups.get(key) as TripleConstraint[];
+      if (group.length === 1) {
+        result.push(constraint);
+      } else {
+        const finiteMaxes = group.map((member) => member.max ?? -1).filter((max) => max !== -1);
+        const merged: TripleConstraint = {
+          type: 'TripleConstraint',
+          predicate: constraint.predicate,
+          min: Math.max(...group.map((member) => member.min ?? 0)),
+          max: finiteMaxes.length > 0 ? Math.min(...finiteMaxes) : -1,
+        };
+        if (constraint.inverse) {
+          merged.inverse = true;
+        }
+        const valueExprs = group
+          .map((member) => member.valueExpr)
+          .filter((valueExpr): valueExpr is shapeExprOrRef => valueExpr !== undefined);
+        if (valueExprs.length === 1) {
+          [merged.valueExpr] = valueExprs;
+        } else if (valueExprs.length > 1) {
+          merged.valueExpr = { type: 'ShapeAnd', shapeExprs: valueExprs };
+        }
+        result.push(merged);
+      }
+    }
+  }
+  return result;
 }
 
 /**
@@ -588,7 +715,13 @@ function operandExpr(operand: ShaclProperty, targetShapes: Map<string, string>):
     }
   }
   if (constraints.length > 0) {
-    parts.push({ type: 'Shape', expression: { type: 'EachOf', expressions: constraints } });
+    const nested: Shape = { type: 'Shape', expression: { type: 'EachOf', expressions: constraints } };
+    if (operand.closed) {
+      nested.closed = true;
+    }
+    parts.push(nested);
+  } else if (operand.closed) {
+    parts.push({ type: 'Shape', closed: true });
   }
 
   return { expr: combineParts(parts), exact };
@@ -608,26 +741,62 @@ function nodeShapeDecl(shape: ShaclNodeShape, targetShapes: Map<string, string>)
 
   const expressions: TripleConstraint[] = [];
   const conjuncts: shapeExprOrRef[] = [];
+  const mentions = new Set<string>();
   for (const property of shape.properties) {
     const conversion = convertProperty(property, targetShapes);
-    if (conversion !== undefined) {
+    if (conversion === undefined) {
+      // Under CLOSED, SHACL still allows the (predicate) paths of skipped
+      // property shapes, so they must stay mentioned.
+      if (shape.closed && property.path?.kind === 'predicate') {
+        mentions.add(property.path.predicate);
+      }
+    } else {
       expressions.push(...conversion.constraints);
       conjuncts.push(...conversion.conjuncts);
+      for (const mention of conversion.mentions) {
+        mentions.add(mention);
+      }
+    }
+    if (shape.closed && property.path?.kind === 'oneOrMore') {
+      // SHACL's CLOSED allow-list only contains plain predicate paths; the
+      // emitted constraint mentions the inner predicate, which is weaker.
+      console.warn('sh:closed combined with a non-predicate sh:path is approximate on', property.term);
     }
   }
+
+  const merged = mergeSamePredicate(expressions);
 
   // Shape-level sh:class becomes a leading `a [<classes>]` triple constraint,
   // mirroring the property-level sh:class conversion.
   if (shape.classes.length > 0) {
-    expressions.unshift({
+    merged.unshift({
       type: 'TripleConstraint',
       predicate: rdfType,
       valueExpr: { type: 'NodeConstraint', values: shape.classes },
     });
   }
 
+  // CLOSED: sh:ignoredProperties members and conjunct-only predicates must be
+  // mentioned via unconstrained triple constraints, or the ShEx shape would
+  // reject data that SHACL accepts. (EXTRA would not help: it only excuses
+  // predicates that already appear in the expression.)
+  if (shape.closed) {
+    for (const ignored of shape.ignoredProperties) {
+      mentions.add(ignored);
+    }
+    const covered = new Set(merged.filter((constraint) => !constraint.inverse)
+      .map((constraint) => constraint.predicate));
+    for (const mention of mentions) {
+      if (!covered.has(mention)) {
+        merged.push({
+          type: 'TripleConstraint', predicate: mention, min: 0, max: -1,
+        });
+      }
+    }
+  }
+
   // Node-shape-level value constraints (sh:datatype, facets, sh:in,
-  // sh:hasValue, sh:node, ...) constrain the focus node itself.
+  // sh:hasValue, sh:node, logical components, ...) constrain the focus node.
   const nodeLevel = bodyParts(shape, targetShapes, { focusConstraints: false, hasValuesAsSelf: true });
 
   const nodeKind = shape.nodeKind && NODE_KINDS[shape.nodeKind];
@@ -640,8 +809,16 @@ function nodeShapeDecl(shape: ShaclNodeShape, targetShapes: Map<string, string>)
   if (negatedKind) {
     exprs.push(negatedKind);
   }
-  if (expressions.length > 0) {
-    exprs.push({ type: 'Shape', expression: { type: 'EachOf', expressions } });
+  if (merged.length > 0) {
+    const mainShape: Shape = { type: 'Shape', expression: { type: 'EachOf', expressions: merged } };
+    if (shape.closed) {
+      mainShape.closed = true;
+    }
+    exprs.push(mainShape);
+  } else if (shape.closed) {
+    // A closed shape with no representable properties rejects all outgoing
+    // arcs, matching SHACL.
+    exprs.push({ type: 'Shape', closed: true });
   }
   exprs.push(...nodeLevel.parts, ...conjuncts);
 

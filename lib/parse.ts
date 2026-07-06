@@ -228,6 +228,10 @@ function parseBody(store: Store, lists: Lists, term: Term, seen: Set<string>): S
     nots,
     properties,
     deactivated: booleanValue(store, term, sh.deactivated) || undefined,
+    closed: booleanValue(store, term, sh.closed) || undefined,
+    ignoredProperties: listMembers(store, lists, term, sh.ignoredProperties)
+      ?.filter((member) => member.termType === 'NamedNode')
+      .map((member) => member.value) ?? [],
     unsupported,
   };
 
@@ -236,15 +240,48 @@ function parseBody(store: Store, lists: Lists, term: Term, seen: Set<string>): S
 }
 
 /**
+ * Parses the object of `sh:qualifiedValueShape`: a reference when it names a
+ * declared node shape, otherwise the inline shape.
+ */
+function parseQualifiedValueShape(
+  store: Store,
+  lists: Lists,
+  term: Term,
+  seen: Set<string>,
+): ShaclProperty | string | undefined {
+  const [shape] = objects(store, term, sh.qualifiedValueShape);
+  if (shape === undefined) {
+    return undefined;
+  }
+  if (shape.termType === 'NamedNode'
+    && store.countQuads(shape, namedNode(rdfType), namedNode(sh.NodeShape), defaultGraph()) > 0) {
+    return shape.value;
+  }
+  if (seen.has(shape.value)) {
+    console.warn('Skipping cyclic sh:qualifiedValueShape on', term);
+    return undefined;
+  }
+  // eslint-disable-next-line no-use-before-define
+  return parseProperty(store, lists, shape, seen);
+}
+
+/**
  * Parses a single shape that may carry an `sh:path` (a property shape or a
  * logical-component operand).
  */
 function parseProperty(store: Store, lists: Lists, term: Term, seen: Set<string>): ShaclProperty {
+  seen.add(term.value);
+  const qualifiedValueShape = parseQualifiedValueShape(store, lists, term, seen);
+  seen.delete(term.value);
   return {
     ...parseBody(store, lists, term, seen),
     path: parsePath(store, objects(store, term, sh.path)[0]),
     minCount: integerValue(store, term, sh.minCount),
     maxCount: integerValue(store, term, sh.maxCount),
+    qualifiedValueShape,
+    qualifiedMinCount: integerValue(store, term, sh.qualifiedMinCount),
+    qualifiedMaxCount: integerValue(store, term, sh.qualifiedMaxCount),
+    qualifiedValueShapesDisjoint: booleanValue(store, term, sh.qualifiedValueShapesDisjoint) || undefined,
   };
 }
 

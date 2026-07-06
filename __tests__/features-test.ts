@@ -499,3 +499,162 @@ describe('sh:deactivated', () => {
     });
   });
 });
+
+describe('sh:closed', () => {
+  it('emits CLOSED with sh:ignoredProperties mentioned as unconstrained constraints', async () => {
+    const schema = await shaclStoreToShexSchema(storeFromTurtle(`
+      ex:S a sh:NodeShape; sh:closed true;
+        sh:ignoredProperties (ex:ignored);
+        sh:property [ sh:path ex:p; sh:datatype xsd:string ].
+    `));
+    expect(schema.shapes![0].shapeExpr).toEqual({
+      type: 'Shape',
+      closed: true,
+      expression: {
+        type: 'EachOf',
+        expressions: [
+          {
+            type: 'TripleConstraint',
+            predicate: 'http://example.org/p',
+            valueExpr: { type: 'NodeConstraint', datatype: 'http://www.w3.org/2001/XMLSchema#string' },
+            min: 0,
+            max: -1,
+          },
+          {
+            type: 'TripleConstraint', predicate: 'http://example.org/ignored', min: 0, max: -1,
+          },
+        ],
+      },
+    });
+    const shexc = await writeShexSchema(schema, { ex: 'http://example.org/' });
+    expect(shexc).toContain('CLOSED');
+  });
+
+  it('keeps the predicates of skipped property shapes mentioned under CLOSED', async () => {
+    const schema = await shaclStoreToShexSchema(storeFromTurtle(`
+      ex:S a sh:NodeShape; sh:closed true;
+        sh:property [ sh:path ex:p; sh:datatype xsd:string ];
+        sh:property [ sh:path ex:q; sh:equals ex:p ].
+    `));
+    const shape = schema.shapes![0].shapeExpr as Shape;
+    const eachOf = shape.expression as { expressions: TripleConstraint[] };
+    expect(eachOf.expressions.map((constraint) => constraint.predicate)).toEqual([
+      'http://example.org/p', 'http://example.org/q',
+    ]);
+    expect(eachOf.expressions[1]).toEqual({
+      type: 'TripleConstraint', predicate: 'http://example.org/q', min: 0, max: -1,
+    });
+  });
+
+  it('keeps hasValue-only predicates mentioned under CLOSED', async () => {
+    const schema = await shaclStoreToShexSchema(storeFromTurtle(`
+      ex:S a sh:NodeShape; sh:closed true;
+        sh:property [ sh:path ex:p; sh:hasValue "v" ].
+    `));
+    const decl = schema.shapes![0].shapeExpr as ShapeAnd;
+    expect(decl.type).toEqual('ShapeAnd');
+    const [main, existence] = decl.shapeExprs as [Shape, Shape];
+    expect(main.closed).toBe(true);
+    const eachOf = main.expression as { expressions: TripleConstraint[] };
+    expect(eachOf.expressions).toEqual([{
+      type: 'TripleConstraint', predicate: 'http://example.org/p', min: 0, max: -1,
+    }]);
+    expect(existence.extra).toEqual(['http://example.org/p']);
+  });
+});
+
+describe('sh:qualifiedValueShape', () => {
+  it('converts qualified cardinalities via the EXTRA idiom', async () => {
+    const schema = await shaclStoreToShexSchema(storeFromTurtle(`
+      ex:S a sh:NodeShape; sh:property [
+        sh:path ex:p;
+        sh:qualifiedValueShape [ sh:datatype xsd:string ];
+        sh:qualifiedMinCount 1
+      ].
+    `));
+    expect(schema.shapes![0].shapeExpr).toEqual({
+      type: 'Shape',
+      extra: ['http://example.org/p'],
+      expression: {
+        type: 'TripleConstraint',
+        predicate: 'http://example.org/p',
+        valueExpr: { type: 'NodeConstraint', datatype: 'http://www.w3.org/2001/XMLSchema#string' },
+        min: 1,
+        max: -1,
+      },
+    });
+  });
+
+  it('references declared node shapes and coexists with universal constraints', async () => {
+    const schema = await shaclStoreToShexSchema(storeFromTurtle(`
+      ex:Q a sh:NodeShape; sh:property [ sh:path ex:x; sh:minCount 1 ].
+      ex:S a sh:NodeShape; sh:property [
+        sh:path ex:p;
+        sh:nodeKind sh:IRI;
+        sh:qualifiedValueShape ex:Q;
+        sh:qualifiedMinCount 2
+      ].
+    `));
+    const decl = schema.shapes!.find((shape) => shape.id === 'http://example.org/S')!;
+    const { shapeExprs } = decl.shapeExpr as ShapeAnd;
+    expect(shapeExprs).toHaveLength(2);
+    const [main, qualified] = shapeExprs as [Shape, Shape];
+    const eachOf = main.expression as { expressions: TripleConstraint[] };
+    expect(eachOf.expressions[0].valueExpr).toEqual({ type: 'NodeConstraint', nodeKind: 'iri' });
+    expect(qualified.extra).toEqual(['http://example.org/p']);
+    expect(qualified.expression).toEqual({
+      type: 'TripleConstraint',
+      predicate: 'http://example.org/p',
+      valueExpr: 'http://example.org/Q',
+      min: 2,
+      max: -1,
+    });
+  });
+
+  it('warns that sh:qualifiedValueShapesDisjoint is ignored', async () => {
+    await shaclStoreToShexSchema(storeFromTurtle(`
+      ex:S a sh:NodeShape; sh:property [
+        sh:path ex:p;
+        sh:qualifiedValueShape [ sh:nodeKind sh:IRI ];
+        sh:qualifiedMinCount 1;
+        sh:qualifiedValueShapesDisjoint true
+      ].
+    `));
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('sh:qualifiedValueShapesDisjoint'),
+      expect.anything(),
+    );
+  });
+});
+
+describe('property shapes sharing a predicate', () => {
+  it('merges them into one triple constraint (EachOf partitioning is weaker)', async () => {
+    const schema = await shaclStoreToShexSchema(storeFromTurtle(`
+      ex:S a sh:NodeShape;
+        sh:property [ sh:path ex:p; sh:datatype xsd:string ];
+        sh:property [ sh:path ex:p; sh:minCount 1; sh:maxCount 5 ].
+    `));
+    expect(soleValueExpr(schema)).toEqual({
+      type: 'NodeConstraint', datatype: 'http://www.w3.org/2001/XMLSchema#string',
+    });
+    const shape = schema.shapes![0].shapeExpr as Shape;
+    const eachOf = shape.expression as { expressions: TripleConstraint[] };
+    expect(eachOf.expressions[0].min).toEqual(1);
+    expect(eachOf.expressions[0].max).toEqual(5);
+  });
+
+  it('conjoins value expressions when several property shapes constrain the values', async () => {
+    const schema = await shaclStoreToShexSchema(storeFromTurtle(`
+      ex:S a sh:NodeShape;
+        sh:property [ sh:path ex:p; sh:datatype xsd:string ];
+        sh:property [ sh:path ex:p; sh:minLength 3 ].
+    `));
+    expect(soleValueExpr(schema)).toEqual({
+      type: 'ShapeAnd',
+      shapeExprs: [
+        { type: 'NodeConstraint', datatype: 'http://www.w3.org/2001/XMLSchema#string' },
+        { type: 'NodeConstraint', minlength: 3 },
+      ],
+    });
+  });
+});
