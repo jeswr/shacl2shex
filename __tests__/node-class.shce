@@ -1,0 +1,10 @@
+PREFIX ex: <http://example.org/test#>
+
+shape ex:CatalogShape -> ex:Catalog ;
+	sh:class ex:Publication {
+	ex:author ex:Person .
+}
+
+shape ex:TagShape -> ex:Tag ;
+	sh:class ex:Keyword {
+}

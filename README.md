@@ -26,9 +26,31 @@ const shapeMap = shapeMapFromDataset(store);
 console.log(writeShapeMap(shapeMap, prefixes));
 ```
 
-:warning: This library is hacked together. Unsupported features include:
+:warning: This library converts a pragmatic subset of SHACL. Unsupported features include:
  - `sh:or`, `sh:and` and `sh:xone`
- - Property paths
+ - Property paths other than plain predicates, `sh:inversePath` over a predicate,
+   and `sh:oneOrMorePath` over a predicate (sequence, alternative, `sh:zeroOrMorePath`
+   and `sh:zeroOrOnePath` paths cause the property to be skipped with a warning)
+
+## Architecture
+
+The conversion is a two-stage pipeline with a plain-data intermediate model in between:
+
+```
+SHACL ingestion            intermediate model          ShEx emission
+lib/parse.ts        →      lib/model.ts         →      lib/toShex.ts
+(parseShaclSchema)         (ShaclSchema)               (shexSchemaFromShacl)
+```
+
+- `lib/parse.ts` reads `sh:NodeShape` declarations out of an N3 store with direct
+  store lookups (RDF lists are extracted once per document, no per-shape validation).
+- `lib/model.ts` is the typed intermediate model — plain data, no store access.
+- `lib/toShex.ts` maps the model onto a ShexJ `Schema`.
+- `lib/writeShex.ts` and `lib/shapeMap.ts` serialize schemas and ShapeMaps.
+- `lib/bin/index.ts` is the CLI.
+
+`parseShaclSchema` and `shexSchemaFromShacl` are exported for advanced use alongside
+the main `shaclStoreToShexSchema` entry point.
 
 ## CLI Usage
 
