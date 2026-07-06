@@ -11,7 +11,7 @@
 import type { Term } from '@rdfjs/types';
 import { DataFactory, Store } from 'n3';
 import type {
-  PropertyPath, ShaclNodeKind, ShaclNodeShape, ShaclProperty, ShaclSchema,
+  PropertyPath, ShaclNodeKind, ShaclNodeShape, ShaclProperty, ShaclSchema, ShaclShapeBody,
 } from './model';
 import { rdfType, sh } from './vocab';
 
@@ -28,6 +28,19 @@ const NODE_KINDS: Record<string, ShaclNodeKind> = {
   [sh.IRIOrLiteral]: 'IRIOrLiteral',
   [sh.BlankNodeOrLiteral]: 'BlankNodeOrLiteral',
 };
+
+/**
+ * Constraint components that ShEx has no counterpart for (cross-triple value
+ * comparison and arbitrary SPARQL). Their presence is recorded on the model
+ * so that emission can warn and skip them without failing the conversion.
+ */
+const UNSUPPORTED_COMPONENTS: [predicate: string, label: string][] = [
+  [sh.equals, 'sh:equals'],
+  [sh.disjoint, 'sh:disjoint'],
+  [sh.lessThan, 'sh:lessThan'],
+  [sh.lessThanOrEquals, 'sh:lessThanOrEquals'],
+  [sh.sparql, 'sh:sparql'],
+];
 
 /** All objects of `subject predicate ?o` in the default graph, in store order. */
 function objects(store: Store, subject: Term, predicate: string): Term[] {
@@ -50,6 +63,26 @@ function singleNamedNodeValue(store: Store, subject: Term, predicate: string): s
   return undefined;
 }
 
+/** The first NamedNode object of `subject predicate ?o`; warns when there are several. */
+function firstNamedNodeValue(store: Store, subject: Term, predicate: string, label: string): string | undefined {
+  const terms = objects(store, subject, predicate).filter((term) => term.termType === 'NamedNode');
+  if (terms.length > 1) {
+    console.warn(`Expected at most one ${label} on`, subject);
+  }
+  return terms.length > 0 ? terms[0].value : undefined;
+}
+
+/** The first Literal object of `subject predicate ?o`, as a string. */
+function literalValue(store: Store, subject: Term, predicate: string): string | undefined {
+  const term = objects(store, subject, predicate).find((object) => object.termType === 'Literal');
+  return term?.value;
+}
+
+/** The first Literal object of `subject predicate ?o`, as a term. */
+function literalTerm(store: Store, subject: Term, predicate: string): Term | undefined {
+  return objects(store, subject, predicate).find((object) => object.termType === 'Literal');
+}
+
 /** The first object of `subject predicate ?o` parsed as an integer, if possible. */
 function integerValue(store: Store, subject: Term, predicate: string): number | undefined {
   const [term] = objects(store, subject, predicate);
@@ -58,6 +91,12 @@ function integerValue(store: Store, subject: Term, predicate: string): number | 
   }
   const value = Number.parseInt(term.value, 10);
   return Number.isNaN(value) ? undefined : value;
+}
+
+/** Whether `subject predicate true` is asserted. */
+function booleanValue(store: Store, subject: Term, predicate: string): boolean {
+  return objects(store, subject, predicate)
+    .some((term) => term.termType === 'Literal' && term.value === 'true');
 }
 
 /** The recognised `sh:nodeKind` of a shape, when exactly one is present. */
@@ -70,6 +109,12 @@ function parseNodeKind(store: Store, subject: Term): ShaclNodeKind | undefined {
     console.warn('Expected at most one sh:nodeKind on', subject);
   }
   return undefined;
+}
+
+/** The members of the first resolvable RDF list object of `subject predicate ?o`. */
+function listMembers(store: Store, lists: Lists, subject: Term, predicate: string): Term[] | undefined {
+  const heads = objects(store, subject, predicate);
+  return heads.length === 1 ? lists[heads[0].value] : undefined;
 }
 
 /**
@@ -100,17 +145,46 @@ function parsePath(store: Store, term: Term | undefined): PropertyPath | undefin
   return undefined;
 }
 
-/** Parses a single property shape (the object of `sh:property`). */
-function parseProperty(store: Store, lists: Lists, term: Term): ShaclProperty {
-  const inObjects = objects(store, term, sh.in);
+/**
+ * Parses the constraint parameters shared by node shapes and property shapes
+ * (see {@link ShaclShapeBody}).
+ */
+function parseBody(store: Store, lists: Lists, term: Term): ShaclShapeBody {
+  const unsupported = UNSUPPORTED_COMPONENTS
+    .filter(([predicate]) => objects(store, term, predicate).length > 0)
+    .map(([, label]) => label);
+  if (booleanValue(store, term, sh.uniqueLang)) {
+    unsupported.push('sh:uniqueLang');
+  }
+
   return {
     term,
-    path: parsePath(store, objects(store, term, sh.path)[0]),
     nodeKind: parseNodeKind(store, term),
-    datatype: singleNamedNodeValue(store, term, sh.datatype),
+    datatype: firstNamedNodeValue(store, term, sh.datatype, 'sh:datatype'),
     classes: namedNodeValues(store, term, sh.class),
     nodeShapes: objects(store, term, sh.node).map((node) => node.value),
-    inValues: inObjects.length === 1 ? lists[inObjects[0].value] : undefined,
+    inValues: listMembers(store, lists, term, sh.in),
+    hasValues: objects(store, term, sh.hasValue),
+    pattern: literalValue(store, term, sh.pattern),
+    flags: literalValue(store, term, sh.flags),
+    minLength: integerValue(store, term, sh.minLength),
+    maxLength: integerValue(store, term, sh.maxLength),
+    minInclusive: literalTerm(store, term, sh.minInclusive),
+    minExclusive: literalTerm(store, term, sh.minExclusive),
+    maxInclusive: literalTerm(store, term, sh.maxInclusive),
+    maxExclusive: literalTerm(store, term, sh.maxExclusive),
+    languageIn: listMembers(store, lists, term, sh.languageIn)
+      ?.filter((member) => member.termType === 'Literal')
+      .map((member) => member.value),
+    unsupported,
+  };
+}
+
+/** Parses a single property shape (the object of `sh:property`). */
+function parseProperty(store: Store, lists: Lists, term: Term): ShaclProperty {
+  return {
+    ...parseBody(store, lists, term),
+    path: parsePath(store, objects(store, term, sh.path)[0]),
     minCount: integerValue(store, term, sh.minCount),
     maxCount: integerValue(store, term, sh.maxCount),
   };
@@ -136,12 +210,11 @@ export function parseShaclSchema(store: Store): ShaclSchema {
     }
 
     shapes.push({
+      ...parseBody(store, lists, subject),
       id: subject.value,
       targetClasses: namedNodeValues(store, subject, sh.targetClass),
       targetSubjectsOf: namedNodeValues(store, subject, sh.targetSubjectsOf),
       targetObjectsOf: namedNodeValues(store, subject, sh.targetObjectsOf),
-      nodeKind: parseNodeKind(store, subject),
-      classes: namedNodeValues(store, subject, sh.class),
       properties,
     });
   }

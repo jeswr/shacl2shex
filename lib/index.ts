@@ -21,7 +21,7 @@ export { writeShexSchema } from './writeShex';
 export { shapeMapFromDataset, writeShapeMap } from './shapeMap';
 export type { ShapeMap, ShapeMapEntry } from './shapeMap';
 export type {
-  PropertyPath, ShaclNodeKind, ShaclNodeShape, ShaclProperty, ShaclSchema,
+  PropertyPath, ShaclNodeKind, ShaclNodeShape, ShaclProperty, ShaclSchema, ShaclShapeBody,
 } from './model';
 
 /** Converts the SHACL node shapes in `shapeStore` into a ShexJ schema. */

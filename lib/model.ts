@@ -20,10 +20,8 @@ export type ShaclNodeKind =
 /**
  * The property paths this converter understands.
  *
- * SHACL sequence, alternative, `sh:zeroOrMorePath` and `sh:zeroOrOnePath`
- * paths (and nested compositions) have no direct ShEx triple-constraint
- * equivalent and are treated as unsupported: the enclosing property shape is
- * skipped with a warning at emission time.
+ * Paths that cannot be reduced to these forms are treated as unsupported: the
+ * enclosing property shape is skipped with a warning at emission time.
  */
 export type PropertyPath =
   /** A plain predicate path. */
@@ -33,15 +31,16 @@ export type PropertyPath =
   /** `sh:oneOrMorePath` over a plain predicate. */
   | { kind: 'oneOrMore'; predicate: string };
 
-/** A parsed SHACL property shape (the object of `sh:property`). */
-export interface ShaclProperty {
-  /** The RDF term identifying the property shape; kept for diagnostics. */
+/**
+ * Constraint parameters shared by node shapes, property shapes and the
+ * operands of the logical constraint components.
+ */
+export interface ShaclShapeBody {
+  /** The RDF term identifying the shape; kept for diagnostics. */
   term: Term;
-  /** The parsed `sh:path`, or `undefined` when missing or unsupported. */
-  path?: PropertyPath;
   /** `sh:nodeKind`, when exactly one recognised value is present. */
   nodeKind?: ShaclNodeKind;
-  /** `sh:datatype` (first IRI value). */
+  /** `sh:datatype` (first IRI value; extra values are warned about). */
   datatype?: string;
   /** `sh:class` IRIs. */
   classes: string[];
@@ -49,6 +48,39 @@ export interface ShaclProperty {
   nodeShapes: string[];
   /** The members of the `sh:in` list, when exactly one resolvable list is present. */
   inValues?: Term[];
+  /** `sh:hasValue` values (the component is repeatable). */
+  hasValues: Term[];
+  /** `sh:pattern` (first literal value). */
+  pattern?: string;
+  /** `sh:flags` (first literal value). */
+  flags?: string;
+  /** `sh:minLength`, when it is a parseable integer. */
+  minLength?: number;
+  /** `sh:maxLength`, when it is a parseable integer. */
+  maxLength?: number;
+  /** `sh:minInclusive` operand (kept as a term so emission can check numericness). */
+  minInclusive?: Term;
+  /** `sh:minExclusive` operand. */
+  minExclusive?: Term;
+  /** `sh:maxInclusive` operand. */
+  maxInclusive?: Term;
+  /** `sh:maxExclusive` operand. */
+  maxExclusive?: Term;
+  /** The members of the first `sh:languageIn` list (BCP47 language tags). */
+  languageIn?: string[];
+  /**
+   * Names of constraint components present on the shape that ShEx cannot
+   * express (`sh:equals`, `sh:disjoint`, `sh:lessThan`, `sh:lessThanOrEquals`,
+   * `sh:uniqueLang`, `sh:sparql`). They are warned about and skipped; the
+   * remaining constraints on the shape still convert.
+   */
+  unsupported: string[];
+}
+
+/** A parsed SHACL property shape (the object of `sh:property`). */
+export interface ShaclProperty extends ShaclShapeBody {
+  /** The parsed `sh:path`, or `undefined` when missing or unsupported. */
+  path?: PropertyPath;
   /** `sh:minCount`, when it is a parseable integer. */
   minCount?: number;
   /** `sh:maxCount`, when it is a parseable integer. */
@@ -56,7 +88,7 @@ export interface ShaclProperty {
 }
 
 /** A parsed SHACL node shape (an `sh:NodeShape` instance). */
-export interface ShaclNodeShape {
+export interface ShaclNodeShape extends ShaclShapeBody {
   /** IRI or blank-node identifier of the node shape. */
   id: string;
   /** `sh:targetClass` IRIs. */
@@ -65,10 +97,6 @@ export interface ShaclNodeShape {
   targetSubjectsOf: string[];
   /** `sh:targetObjectsOf` predicate IRIs. */
   targetObjectsOf: string[];
-  /** Shape-level `sh:nodeKind`, when exactly one recognised value is present. */
-  nodeKind?: ShaclNodeKind;
-  /** Shape-level `sh:class` IRIs (converted to an `rdf:type` constraint). */
-  classes: string[];
   /** The shape's `sh:property` property shapes, in store order. */
   properties: ShaclProperty[];
 }
