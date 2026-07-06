@@ -9,7 +9,7 @@ import { Parser, Store } from 'n3';
 import type {
   Shape, ShapeAnd, ShapeDecl, TripleConstraint,
 } from 'shexj';
-import { shaclStoreToShexSchema, writeShexSchema } from '../lib';
+import { shaclStoreToShexSchema, shapeMapFromDataset, writeShexSchema } from '../lib';
 
 const PREFIXES = `
 @prefix sh: <http://www.w3.org/ns/shacl#>.
@@ -324,6 +324,178 @@ describe('node-shape-level value constraints', () => {
     `));
     expect(schema.shapes![0].shapeExpr).toEqual({
       type: 'NodeConstraint', datatype: 'http://www.w3.org/2001/XMLSchema#string', pattern: '^a',
+    });
+  });
+});
+
+describe('sh:or', () => {
+  it('converts the datatype-union idiom to a ShapeOr of node constraints', async () => {
+    const schema = await shaclStoreToShexSchema(storeFromTurtle(`
+      ex:S a sh:NodeShape; sh:property [
+        sh:path ex:p;
+        sh:or ([ sh:datatype xsd:string ] [ sh:datatype xsd:integer ])
+      ].
+    `));
+    expect(soleValueExpr(schema)).toEqual({
+      type: 'ShapeOr',
+      shapeExprs: [
+        { type: 'NodeConstraint', datatype: 'http://www.w3.org/2001/XMLSchema#string' },
+        { type: 'NodeConstraint', datatype: 'http://www.w3.org/2001/XMLSchema#integer' },
+      ],
+    });
+  });
+
+  it('converts property-shape operands (the one-of-these-properties idiom)', async () => {
+    const schema = await shaclStoreToShexSchema(storeFromTurtle(`
+      ex:S a sh:NodeShape;
+        sh:or ([ sh:path ex:a; sh:minCount 1 ] [ sh:path ex:b; sh:minCount 1 ]).
+    `));
+    expect(schema.shapes![0].shapeExpr).toEqual({
+      type: 'ShapeOr',
+      shapeExprs: [
+        {
+          type: 'Shape',
+          expression: {
+            type: 'EachOf',
+            expressions: [{
+              type: 'TripleConstraint', predicate: 'http://example.org/a', min: 1, max: -1,
+            }],
+          },
+        },
+        {
+          type: 'Shape',
+          expression: {
+            type: 'EachOf',
+            expressions: [{
+              type: 'TripleConstraint', predicate: 'http://example.org/b', min: 1, max: -1,
+            }],
+          },
+        },
+      ],
+    });
+  });
+
+  it('skips the whole sh:or when an operand cannot convert (never strengthen)', async () => {
+    const schema = await shaclStoreToShexSchema(storeFromTurtle(`
+      ex:S a sh:NodeShape; sh:property [
+        sh:path ex:p;
+        sh:datatype xsd:string;
+        sh:or ([ sh:datatype xsd:integer ] [ sh:equals ex:other ])
+      ].
+    `));
+    expect(soleValueExpr(schema)).toEqual({
+      type: 'NodeConstraint', datatype: 'http://www.w3.org/2001/XMLSchema#string',
+    });
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('sh:or'), expect.anything());
+  });
+});
+
+describe('sh:and', () => {
+  it('converts to a ShapeAnd of the operand shapes', async () => {
+    const schema = await shaclStoreToShexSchema(storeFromTurtle(`
+      ex:S a sh:NodeShape; sh:property [
+        sh:path ex:p;
+        sh:and ([ sh:minLength 2 ] [ sh:maxLength 4 ])
+      ].
+    `));
+    expect(soleValueExpr(schema)).toEqual({
+      type: 'ShapeAnd',
+      shapeExprs: [
+        { type: 'NodeConstraint', minlength: 2 },
+        { type: 'NodeConstraint', maxlength: 4 },
+      ],
+    });
+  });
+
+  it('drops an unconvertible operand with a warning (a sound weakening)', async () => {
+    const schema = await shaclStoreToShexSchema(storeFromTurtle(`
+      ex:S a sh:NodeShape; sh:property [
+        sh:path ex:p;
+        sh:and ([ sh:minLength 2 ] [ sh:equals ex:other ])
+      ].
+    `));
+    expect(soleValueExpr(schema)).toEqual({ type: 'NodeConstraint', minlength: 2 });
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('sh:and'), expect.anything());
+  });
+});
+
+describe('sh:not', () => {
+  it('converts to ShapeNot for exactly-convertible operands', async () => {
+    const schema = await shaclStoreToShexSchema(storeFromTurtle(`
+      ex:S a sh:NodeShape; sh:property [
+        sh:path ex:p;
+        sh:not [ sh:datatype xsd:string ]
+      ].
+    `));
+    expect(soleValueExpr(schema)).toEqual({
+      type: 'ShapeNot',
+      shapeExpr: { type: 'NodeConstraint', datatype: 'http://www.w3.org/2001/XMLSchema#string' },
+    });
+  });
+
+  it('refuses to negate operands that only convert approximately', async () => {
+    const schema = await shaclStoreToShexSchema(storeFromTurtle(`
+      ex:S a sh:NodeShape; sh:property [
+        sh:path ex:p;
+        sh:datatype xsd:string;
+        sh:not [ sh:class ex:C ]
+      ].
+    `));
+    expect(soleValueExpr(schema)).toEqual({
+      type: 'NodeConstraint', datatype: 'http://www.w3.org/2001/XMLSchema#string',
+    });
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('sh:not'), expect.anything());
+  });
+});
+
+describe('sh:xone', () => {
+  it('approximates as a ShapeOr with a warning (exclusivity is lost)', async () => {
+    const schema = await shaclStoreToShexSchema(storeFromTurtle(`
+      ex:S a sh:NodeShape; sh:property [
+        sh:path ex:p;
+        sh:xone ([ sh:datatype xsd:string ] [ sh:nodeKind sh:IRI ])
+      ].
+    `));
+    expect(soleValueExpr(schema)).toEqual({
+      type: 'ShapeOr',
+      shapeExprs: [
+        { type: 'NodeConstraint', datatype: 'http://www.w3.org/2001/XMLSchema#string' },
+        { type: 'NodeConstraint', nodeKind: 'iri' },
+      ],
+    });
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('sh:xone'), expect.anything());
+  });
+});
+
+describe('sh:deactivated', () => {
+  it('converts a deactivated node shape to the empty (match-anything) shape', async () => {
+    const schema = await shaclStoreToShexSchema(storeFromTurtle(`
+      ex:S a sh:NodeShape; sh:deactivated true;
+        sh:property [ sh:path ex:p; sh:minCount 5 ].
+    `));
+    expect(schema.shapes).toEqual([{
+      id: 'http://example.org/S', type: 'ShapeDecl', shapeExpr: { type: 'Shape' },
+    }]);
+  });
+
+  it('suppresses ShapeMap entries for deactivated shapes', () => {
+    const store = storeFromTurtle(`
+      ex:S a sh:NodeShape; sh:deactivated true; sh:targetClass ex:C.
+      ex:T a sh:NodeShape; sh:targetClass ex:D.
+    `);
+    expect(shapeMapFromDataset(store).entries).toEqual([
+      { node: 'FOCUS rdf:type <http://example.org/D>', shape: 'http://example.org/T' },
+    ]);
+  });
+
+  it('skips deactivated property shapes without warnings', async () => {
+    const schema = await shaclStoreToShexSchema(storeFromTurtle(`
+      ex:S a sh:NodeShape;
+        sh:property [ sh:path ex:p; sh:datatype xsd:string ];
+        sh:property [ sh:path ex:q; sh:deactivated true; sh:minCount 3 ].
+    `));
+    expect(soleValueExpr(schema)).toEqual({
+      type: 'NodeConstraint', datatype: 'http://www.w3.org/2001/XMLSchema#string',
     });
   });
 });

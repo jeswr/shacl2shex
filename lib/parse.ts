@@ -147,9 +147,10 @@ function parsePath(store: Store, term: Term | undefined): PropertyPath | undefin
 
 /**
  * Parses the constraint parameters shared by node shapes and property shapes
- * (see {@link ShaclShapeBody}).
+ * (see {@link ShaclShapeBody}). `seen` guards the recursion into the logical
+ * components against cyclic shape definitions.
  */
-function parseBody(store: Store, lists: Lists, term: Term): ShaclShapeBody {
+function parseBody(store: Store, lists: Lists, term: Term, seen: Set<string>): ShaclShapeBody {
   const unsupported = UNSUPPORTED_COMPONENTS
     .filter(([predicate]) => objects(store, term, predicate).length > 0)
     .map(([, label]) => label);
@@ -157,7 +158,52 @@ function parseBody(store: Store, lists: Lists, term: Term): ShaclShapeBody {
     unsupported.push('sh:uniqueLang');
   }
 
-  return {
+  seen.add(term.value);
+
+  // The operands of the logical components are themselves shapes; each list
+  // of operands is parsed recursively, cutting off on cycles.
+  const operandLists = (predicate: string, label: string): ShaclProperty[][] => {
+    const result: ShaclProperty[][] = [];
+    for (const head of objects(store, term, predicate)) {
+      const members = lists[head.value];
+      if (members === undefined) {
+        console.warn(`Could not resolve the ${label} operand list on`, term);
+        unsupported.push(label);
+      } else if (members.some((member) => seen.has(member.value))) {
+        console.warn(`Skipping cyclic ${label} on`, term);
+        unsupported.push(label);
+      } else {
+        // eslint-disable-next-line no-use-before-define
+        result.push(members.map((member) => parseProperty(store, lists, member, seen)));
+      }
+    }
+    return result;
+  };
+
+  const nots: ShaclProperty[] = [];
+  for (const operand of objects(store, term, sh.not)) {
+    if (seen.has(operand.value)) {
+      console.warn('Skipping cyclic sh:not on', term);
+      unsupported.push('sh:not');
+    } else {
+      // eslint-disable-next-line no-use-before-define
+      nots.push(parseProperty(store, lists, operand, seen));
+    }
+  }
+
+  const properties: ShaclProperty[] = [];
+  for (const property of objects(store, term, sh.property)) {
+    if (property.termType !== 'NamedNode' && property.termType !== 'BlankNode') {
+      console.warn('Unsupported property', property);
+    } else if (seen.has(property.value)) {
+      console.warn('Skipping cyclic sh:property on', term);
+    } else {
+      // eslint-disable-next-line no-use-before-define
+      properties.push(parseProperty(store, lists, property, seen));
+    }
+  }
+
+  const body: ShaclShapeBody = {
     term,
     nodeKind: parseNodeKind(store, term),
     datatype: firstNamedNodeValue(store, term, sh.datatype, 'sh:datatype'),
@@ -176,14 +222,26 @@ function parseBody(store: Store, lists: Lists, term: Term): ShaclShapeBody {
     languageIn: listMembers(store, lists, term, sh.languageIn)
       ?.filter((member) => member.termType === 'Literal')
       .map((member) => member.value),
+    ors: operandLists(sh.or, 'sh:or'),
+    ands: operandLists(sh.and, 'sh:and'),
+    xones: operandLists(sh.xone, 'sh:xone'),
+    nots,
+    properties,
+    deactivated: booleanValue(store, term, sh.deactivated) || undefined,
     unsupported,
   };
+
+  seen.delete(term.value);
+  return body;
 }
 
-/** Parses a single property shape (the object of `sh:property`). */
-function parseProperty(store: Store, lists: Lists, term: Term): ShaclProperty {
+/**
+ * Parses a single shape that may carry an `sh:path` (a property shape or a
+ * logical-component operand).
+ */
+function parseProperty(store: Store, lists: Lists, term: Term, seen: Set<string>): ShaclProperty {
   return {
-    ...parseBody(store, lists, term),
+    ...parseBody(store, lists, term, seen),
     path: parsePath(store, objects(store, term, sh.path)[0]),
     minCount: integerValue(store, term, sh.minCount),
     maxCount: integerValue(store, term, sh.maxCount),
@@ -200,22 +258,12 @@ export function parseShaclSchema(store: Store): ShaclSchema {
   const shapes: ShaclNodeShape[] = [];
 
   for (const { subject } of store.match(null, namedNode(rdfType), namedNode(sh.NodeShape), defaultGraph())) {
-    const properties: ShaclProperty[] = [];
-    for (const property of objects(store, subject, sh.property)) {
-      if (property.termType !== 'NamedNode' && property.termType !== 'BlankNode') {
-        console.warn('Unsupported property', property);
-      } else {
-        properties.push(parseProperty(store, lists, property));
-      }
-    }
-
     shapes.push({
-      ...parseBody(store, lists, subject),
+      ...parseBody(store, lists, subject, new Set()),
       id: subject.value,
       targetClasses: namedNodeValues(store, subject, sh.targetClass),
       targetSubjectsOf: namedNodeValues(store, subject, sh.targetSubjectsOf),
       targetObjectsOf: namedNodeValues(store, subject, sh.targetObjectsOf),
-      properties,
     });
   }
 

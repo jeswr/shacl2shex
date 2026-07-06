@@ -68,6 +68,23 @@ export interface ShaclShapeBody {
   maxExclusive?: Term;
   /** The members of the first `sh:languageIn` list (BCP47 language tags). */
   languageIn?: string[];
+  /** The operand lists of each `sh:or` on the shape. */
+  // eslint-disable-next-line no-use-before-define
+  ors: ShaclProperty[][];
+  /** The operand lists of each `sh:and` on the shape. */
+  // eslint-disable-next-line no-use-before-define
+  ands: ShaclProperty[][];
+  /** The operand lists of each `sh:xone` on the shape. */
+  // eslint-disable-next-line no-use-before-define
+  xones: ShaclProperty[][];
+  /** The operands of each `sh:not` on the shape. */
+  // eslint-disable-next-line no-use-before-define
+  nots: ShaclProperty[];
+  /** The shape's `sh:property` property shapes, in store order. */
+  // eslint-disable-next-line no-use-before-define
+  properties: ShaclProperty[];
+  /** Whether `sh:deactivated true` is asserted (the shape validates nothing). */
+  deactivated?: boolean;
   /**
    * Names of constraint components present on the shape that ShEx cannot
    * express (`sh:equals`, `sh:disjoint`, `sh:lessThan`, `sh:lessThanOrEquals`,
@@ -77,7 +94,11 @@ export interface ShaclShapeBody {
   unsupported: string[];
 }
 
-/** A parsed SHACL property shape (the object of `sh:property`). */
+/**
+ * A parsed SHACL property shape (the object of `sh:property`), and also the
+ * shape type used for the operands of the logical components (which may be
+ * property shapes — `path` set — or nested node shapes — `path` absent).
+ */
 export interface ShaclProperty extends ShaclShapeBody {
   /** The parsed `sh:path`, or `undefined` when missing or unsupported. */
   path?: PropertyPath;
@@ -97,8 +118,6 @@ export interface ShaclNodeShape extends ShaclShapeBody {
   targetSubjectsOf: string[];
   /** `sh:targetObjectsOf` predicate IRIs. */
   targetObjectsOf: string[];
-  /** The shape's `sh:property` property shapes, in store order. */
-  properties: ShaclProperty[];
 }
 
 /** All node shapes parsed from a SHACL document, in store order. */

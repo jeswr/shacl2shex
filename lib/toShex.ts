@@ -156,6 +156,14 @@ interface PartsResult {
   exact: boolean;
 }
 
+/** The result of converting a single shape into a shape expression. */
+interface ExprResult {
+  /** The converted expression, or `undefined` when nothing converted. */
+  expr?: shapeExprOrRef;
+  /** False when any constraint was skipped, weakened or approximated. */
+  exact: boolean;
+}
+
 /**
  * Converts the shared constraint parameters of a shape body into a list of
  * ShEx shape-expression conjuncts. Also emits the warnings for inexpressible
@@ -253,6 +261,9 @@ function bodyParts(body: ShaclShapeBody, targetShapes: Map<string, string>, opti
     && body.classes.length === 0
     && constraint.nodeKind !== undefined
     && Object.keys(constraint).length === 2;
+  if (nodeKindSwallowed) {
+    exact = false;
+  }
   if (Object.keys(constraint).length > 1 && !nodeKindSwallowed) {
     parts.unshift(constraint);
   }
@@ -277,13 +288,89 @@ function bodyParts(body: ShaclShapeBody, targetShapes: Map<string, string>, opti
   if (options.focusConstraints && body.classes.length > 0) {
     // A single sh:class targeted by some shape becomes a reference to that
     // shape; anything else becomes a nested `{ a [<classes>] }` shape. Note
-    // that neither form applies rdfs:subClassOf* entailment (see README).
+    // that neither form applies rdfs:subClassOf* entailment, and the nested
+    // form does not accept multi-typed nodes (both documented in the README),
+    // so the conversion is not exact.
     const targetShape = body.classes.length === 1 ? targetShapes.get(body.classes[0]) : undefined;
     parts.push(targetShape ?? classShape(body.classes));
+    exact = false;
   }
 
   for (const nodeShape of body.nodeShapes) {
     parts.push(nodeShape);
+  }
+
+  // sh:or: all operands must convert, otherwise the disjunction as a whole is
+  // skipped (dropping one operand would strengthen the constraint).
+  for (const operands of body.ors) {
+    // eslint-disable-next-line no-use-before-define
+    const converted = operands.map((operand) => operandExpr(operand, targetShapes));
+    const exprs = converted
+      .map((result) => result.expr)
+      .filter((expr): expr is shapeExprOrRef => expr !== undefined);
+    if (exprs.length !== converted.length) {
+      console.warn('Skipping sh:or with an unconvertible operand on', body.term);
+      exact = false;
+    } else {
+      exact = exact && converted.every((result) => result.exact);
+      parts.push(exprs.length === 1 ? exprs[0] : { type: 'ShapeOr', shapeExprs: exprs });
+    }
+  }
+
+  // sh:and: an unconvertible operand may be dropped (a sound weakening).
+  for (const operands of body.ands) {
+    // eslint-disable-next-line no-use-before-define
+    const converted = operands.map((operand) => operandExpr(operand, targetShapes));
+    const exprs = converted
+      .map((result) => result.expr)
+      .filter((expr): expr is shapeExprOrRef => expr !== undefined);
+    if (exprs.length !== converted.length) {
+      console.warn('Dropping unconvertible sh:and operand(s) on', body.term);
+      exact = false;
+    }
+    exact = exact && converted.every((result) => result.exact || result.expr === undefined);
+    if (exprs.length === 1) {
+      parts.push(exprs[0]);
+    } else if (exprs.length > 1) {
+      parts.push({ type: 'ShapeAnd', shapeExprs: exprs });
+    }
+  }
+
+  // sh:xone: ShEx has no exclusive-or over shape expressions; approximated as
+  // a plain disjunction (exclusivity is not enforced).
+  for (const operands of body.xones) {
+    // eslint-disable-next-line no-use-before-define
+    const converted = operands.map((operand) => operandExpr(operand, targetShapes));
+    const exprs = converted
+      .map((result) => result.expr)
+      .filter((expr): expr is shapeExprOrRef => expr !== undefined);
+    if (exprs.length !== converted.length) {
+      console.warn('Skipping sh:xone with an unconvertible operand on', body.term);
+    } else {
+      console.warn('Approximating sh:xone as a disjunction (exclusivity is not enforced) on', body.term);
+      parts.push(exprs.length === 1 ? exprs[0] : { type: 'ShapeOr', shapeExprs: exprs });
+    }
+    exact = false;
+  }
+
+  // sh:not: only negate operands that converted exactly (negating a weakened
+  // or strengthened operand is unsound) and that contain no shape references
+  // (negated references risk unstratified negation).
+  for (const operand of body.nots) {
+    // eslint-disable-next-line no-use-before-define
+    const converted = operandExpr(operand, targetShapes);
+    const references: string[] = [];
+    // eslint-disable-next-line no-use-before-define
+    collectReferences(converted.expr, references);
+    if (converted.expr === undefined || !converted.exact) {
+      console.warn('Skipping sh:not over a shape that does not convert exactly on', body.term);
+      exact = false;
+    } else if (references.length > 0) {
+      console.warn('Skipping sh:not over a shape reference on', body.term);
+      exact = false;
+    } else {
+      parts.push({ type: 'ShapeNot', shapeExpr: converted.expr as shapeExpr });
+    }
   }
 
   return { parts, exact };
@@ -395,6 +482,8 @@ interface PropertyConversion {
   constraints: TripleConstraint[];
   /** Shape-expression conjuncts for the enclosing `ShapeDecl` (EXTRA idioms). */
   conjuncts: shapeExprOrRef[];
+  /** False when any constraint was skipped, weakened or approximated. */
+  exact: boolean;
 }
 
 /**
@@ -402,7 +491,16 @@ interface PropertyConversion {
  * can be represented (in which case it is skipped with a warning).
  */
 function convertProperty(property: ShaclProperty, targetShapes: Map<string, string>): PropertyConversion | undefined {
-  const { parts } = bodyParts(property, targetShapes, { focusConstraints: true, hasValuesAsSelf: false });
+  // A deactivated shape validates nothing.
+  if (property.deactivated) {
+    return { constraints: [], conjuncts: [], exact: true };
+  }
+
+  const { parts, exact: partsExact } = bodyParts(property, targetShapes, {
+    focusConstraints: true,
+    hasValuesAsSelf: false,
+  });
+  let exact = partsExact;
   const valueExpr = combineParts(parts);
   const conjuncts: shapeExprOrRef[] = [];
 
@@ -415,17 +513,25 @@ function convertProperty(property: ShaclProperty, targetShapes: Map<string, stri
         const conjunct = hasValueConjunct(path.predicate, path.kind === 'inverse', value, property.term);
         if (conjunct !== undefined) {
           conjuncts.push(conjunct);
+        } else {
+          exact = false;
         }
       }
     } else {
       console.warn('Skipping sh:hasValue over an unsupported sh:path on', property.term);
+      exact = false;
     }
+  }
+
+  // The one-level unrolling of sh:oneOrMorePath is an approximation.
+  if (property.path?.kind === 'oneOrMore') {
+    exact = false;
   }
 
   const hasExplicitCounts = property.minCount !== undefined || property.maxCount !== undefined;
   if (valueExpr === undefined && !hasExplicitCounts) {
     if (conjuncts.length > 0) {
-      return { constraints: [], conjuncts };
+      return { constraints: [], conjuncts, exact };
     }
     console.warn('Unsupported property', property.term);
     return undefined;
@@ -433,9 +539,59 @@ function convertProperty(property: ShaclProperty, targetShapes: Map<string, stri
 
   const constraint = tripleConstraint(property, valueExpr);
   if (constraint === undefined) {
-    return conjuncts.length > 0 ? { constraints: [], conjuncts } : undefined;
+    return conjuncts.length > 0 ? { constraints: [], conjuncts, exact: false } : undefined;
   }
-  return { constraints: [constraint], conjuncts };
+  return { constraints: [constraint], conjuncts, exact };
+}
+
+/**
+ * Converts the operand of a logical constraint component (`sh:or`, `sh:and`,
+ * `sh:xone`, `sh:not`) into a shape expression. Operands may be property
+ * shapes (`sh:path` present) or nested node shapes.
+ */
+function operandExpr(operand: ShaclProperty, targetShapes: Map<string, string>): ExprResult {
+  // A deactivated operand places no constraints: it converts to the empty
+  // shape, which every node matches.
+  if (operand.deactivated) {
+    return { expr: { type: 'Shape' }, exact: true };
+  }
+
+  if (operand.path !== undefined) {
+    const conversion = convertProperty(operand, targetShapes);
+    if (conversion === undefined) {
+      return { exact: false };
+    }
+    const parts: shapeExprOrRef[] = [];
+    if (conversion.constraints.length > 0) {
+      parts.push({ type: 'Shape', expression: { type: 'EachOf', expressions: conversion.constraints } });
+    }
+    parts.push(...conversion.conjuncts);
+    return { expr: combineParts(parts), exact: conversion.exact };
+  }
+
+  const { parts, exact: partsExact } = bodyParts(operand, targetShapes, {
+    focusConstraints: true,
+    hasValuesAsSelf: true,
+  });
+  let exact = partsExact;
+
+  // Nested sh:property shapes on a node-shape operand.
+  const constraints: TripleConstraint[] = [];
+  for (const property of operand.properties) {
+    const conversion = convertProperty(property, targetShapes);
+    if (conversion === undefined) {
+      exact = false;
+    } else {
+      constraints.push(...conversion.constraints);
+      parts.push(...conversion.conjuncts);
+      exact = exact && conversion.exact;
+    }
+  }
+  if (constraints.length > 0) {
+    parts.push({ type: 'Shape', expression: { type: 'EachOf', expressions: constraints } });
+  }
+
+  return { expr: combineParts(parts), exact };
 }
 
 /**
@@ -443,6 +599,13 @@ function convertProperty(property: ShaclProperty, targetShapes: Map<string, stri
  * shape has no representable constraints at all.
  */
 function nodeShapeDecl(shape: ShaclNodeShape, targetShapes: Map<string, string>): ShapeDecl | undefined {
+  // A deactivated shape conforms for every node: declare it as the empty
+  // shape so that inbound references remain valid (its ShapeMap entries are
+  // suppressed separately).
+  if (shape.deactivated) {
+    return { id: shape.id, type: 'ShapeDecl', shapeExpr: { type: 'Shape' } };
+  }
+
   const expressions: TripleConstraint[] = [];
   const conjuncts: shapeExprOrRef[] = [];
   for (const property of shape.properties) {

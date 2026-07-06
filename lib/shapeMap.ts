@@ -34,14 +34,17 @@ export function shapeMapFromDataset(shapeStore: Store): ShapeMap {
   const entries: ShapeMapEntry[] = [];
 
   for (const shape of parseShaclSchema(shapeStore).shapes) {
-    for (const targetClass of shape.targetClasses) {
-      entries.push({ node: `FOCUS rdf:type <${targetClass}>`, shape: shape.id });
-    }
-    for (const predicate of shape.targetSubjectsOf) {
-      entries.push({ node: `FOCUS <${predicate}> _`, shape: shape.id });
-    }
-    for (const predicate of shape.targetObjectsOf) {
-      entries.push({ node: `_ <${predicate}> FOCUS`, shape: shape.id });
+    // A deactivated shape validates nothing, so it targets nothing.
+    if (!shape.deactivated) {
+      for (const targetClass of shape.targetClasses) {
+        entries.push({ node: `FOCUS rdf:type <${targetClass}>`, shape: shape.id });
+      }
+      for (const predicate of shape.targetSubjectsOf) {
+        entries.push({ node: `FOCUS <${predicate}> _`, shape: shape.id });
+      }
+      for (const predicate of shape.targetObjectsOf) {
+        entries.push({ node: `_ <${predicate}> FOCUS`, shape: shape.id });
+      }
     }
   }
 

@@ -11,8 +11,10 @@ const shacl = 'http://www.w3.org/ns/shacl#';
 
 export const sh = {
   NodeShape: `${shacl}NodeShape`,
+  and: `${shacl}and`,
   class: `${shacl}class`,
   datatype: `${shacl}datatype`,
+  deactivated: `${shacl}deactivated`,
   disjoint: `${shacl}disjoint`,
   equals: `${shacl}equals`,
   flags: `${shacl}flags`,
@@ -32,7 +34,9 @@ export const sh = {
   minLength: `${shacl}minLength`,
   node: `${shacl}node`,
   nodeKind: `${shacl}nodeKind`,
+  not: `${shacl}not`,
   oneOrMorePath: `${shacl}oneOrMorePath`,
+  or: `${shacl}or`,
   path: `${shacl}path`,
   pattern: `${shacl}pattern`,
   property: `${shacl}property`,
@@ -41,6 +45,7 @@ export const sh = {
   targetObjectsOf: `${shacl}targetObjectsOf`,
   targetSubjectsOf: `${shacl}targetSubjectsOf`,
   uniqueLang: `${shacl}uniqueLang`,
+  xone: `${shacl}xone`,
   // Node kinds
   IRI: `${shacl}IRI`,
   Literal: `${shacl}Literal`,
