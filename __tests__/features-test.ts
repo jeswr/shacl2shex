@@ -6,6 +6,7 @@
  * resulting ShexJ structures and/or serialized ShExC.
  */
 import { Parser, Store } from 'n3';
+import { construct } from '@shexjs/parser';
 import type {
   Shape, ShapeAnd, ShapeDecl, TripleConstraint,
 } from 'shexj';
@@ -935,5 +936,52 @@ describe('property shapes sharing a predicate', () => {
         { type: 'NodeConstraint', minlength: 3 },
       ],
     });
+  });
+});
+
+describe('ShExC regex serialization', () => {
+  /** Every {pattern, flags} facet found anywhere in a (parsed) ShExJ tree. */
+  function collectPatterns(node: unknown): { pattern: string, flags?: string }[] {
+    if (Array.isArray(node)) return node.flatMap(collectPatterns);
+    if (node !== null && typeof node === 'object') {
+      const record = node as { pattern?: unknown, flags?: unknown };
+      const own: { pattern: string, flags?: string }[] = typeof record.pattern === 'string'
+        ? [{ pattern: record.pattern, flags: record.flags as string | undefined }]
+        : [];
+      return own.concat(Object.values(record).flatMap(collectPatterns));
+    }
+    return [];
+  }
+
+  it('re-encodes \\d escapes into UCHARs the reference ShEx parser accepts and round-trips', async () => {
+    const schema = await shaclStoreToShexSchema(storeFromTurtle(String.raw`
+      ex:S a sh:NodeShape; sh:property [ sh:path ex:p; sh:pattern "\\d{4}-\\d{2}" ].
+    `));
+    const shexc = await writeShexSchema(schema, { ex: 'http://example.org/' });
+    // The ShExJ pattern facet keeps the plain regex; only the ShExC encodes it.
+    expect(soleValueExpr(schema)).toEqual({ type: 'NodeConstraint', pattern: String.raw`\d{4}-\d{2}` });
+    expect(shexc).toContain(String.raw`/\u005Cd{4}-\u005Cd{2}/`);
+    const parsed = construct('http://example.org/').parse(shexc);
+    expect(collectPatterns(parsed)).toEqual([{ pattern: String.raw`\d{4}-\d{2}`, flags: undefined }]);
+  });
+
+  it('round-trips \\w, \\s and \\p{...} class escapes with sh:flags intact', async () => {
+    const schema = await shaclStoreToShexSchema(storeFromTurtle(String.raw`
+      ex:S a sh:NodeShape; sh:property [ sh:path ex:p; sh:pattern "^\\w+\\s\\p{L}$"; sh:flags "i" ].
+    `));
+    const shexc = await writeShexSchema(schema, { ex: 'http://example.org/' });
+    expect(shexc).toContain(String.raw`/^\u005Cw+\u005Cs\u005Cp{L}$/i`);
+    const parsed = construct('http://example.org/').parse(shexc);
+    expect(collectPatterns(parsed)).toEqual([{ pattern: String.raw`^\w+\s\p{L}$`, flags: 'i' }]);
+  });
+
+  it('keeps ShExC-legal escapes verbatim and leaves slash escaping to the writer', async () => {
+    const schema = await shaclStoreToShexSchema(storeFromTurtle(String.raw`
+      ex:S a sh:NodeShape; sh:property [ sh:path ex:p; sh:pattern "a\\.b/c\\\\d" ].
+    `));
+    const shexc = await writeShexSchema(schema, { ex: 'http://example.org/' });
+    expect(shexc).toContain(String.raw`/a\.b\/c\\d/`);
+    const parsed = construct('http://example.org/').parse(shexc);
+    expect(collectPatterns(parsed)).toEqual([{ pattern: String.raw`a\.b/c\\d`, flags: undefined }]);
   });
 });

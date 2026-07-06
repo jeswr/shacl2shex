@@ -42,6 +42,7 @@
     "@rollup/plugin-commonjs": "^29.0.0",
     "@rollup/plugin-node-resolve": "^16.0.1",
     "@rollup/plugin-typescript": "^12.1.4",
+    "@shexjs/parser": "^1.0.0-alpha.28",
     "@types/jest": "^30.0.0",
     "@types/n3": "^1.16.4",
     "@types/shexj": "^2.1.7",
