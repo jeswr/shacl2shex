@@ -54,15 +54,6 @@ function namedNodeValues(store: Store, subject: Term, predicate: string): string
     .map((term) => term.value);
 }
 
-/** The single NamedNode object of `subject predicate ?o`, if there is exactly one object. */
-function singleNamedNodeValue(store: Store, subject: Term, predicate: string): string | undefined {
-  const terms = objects(store, subject, predicate);
-  if (terms.length === 1 && terms[0].termType === 'NamedNode') {
-    return terms[0].value;
-  }
-  return undefined;
-}
-
 /** The first NamedNode object of `subject predicate ?o`; warns when there are several. */
 function firstNamedNodeValue(store: Store, subject: Term, predicate: string, label: string): string | undefined {
   const terms = objects(store, subject, predicate).filter((term) => term.termType === 'NamedNode');
@@ -117,14 +108,20 @@ function listMembers(store: Store, lists: Lists, subject: Term, predicate: strin
   return heads.length === 1 ? lists[heads[0].value] : undefined;
 }
 
+/** The unary SHACL path constructors. */
+const UNARY_PATHS: [predicate: string, kind: 'inverse' | 'zeroOrMore' | 'oneOrMore' | 'zeroOrOne'][] = [
+  [sh.inversePath, 'inverse'],
+  [sh.zeroOrMorePath, 'zeroOrMore'],
+  [sh.oneOrMorePath, 'oneOrMore'],
+  [sh.zeroOrOnePath, 'zeroOrOne'],
+];
+
 /**
- * Parses an `sh:path` object into a {@link PropertyPath}.
- *
- * Returns `undefined` for the path kinds this converter does not support
- * (sequence, alternative, `sh:zeroOrMorePath`, `sh:zeroOrOnePath`, and any
- * nested composition); the caller skips such property shapes with a warning.
+ * Parses an `sh:path` object into a {@link PropertyPath}, or returns
+ * `undefined` when the path is not well-formed; the caller skips such
+ * property shapes with a warning.
  */
-function parsePath(store: Store, term: Term | undefined): PropertyPath | undefined {
+function parsePath(store: Store, lists: Lists, term: Term | undefined): PropertyPath | undefined {
   if (term === undefined) {
     return undefined;
   }
@@ -134,14 +131,36 @@ function parsePath(store: Store, term: Term | undefined): PropertyPath | undefin
   if (term.termType !== 'BlankNode') {
     return undefined;
   }
-  const inverse = singleNamedNodeValue(store, term, sh.inversePath);
-  if (inverse !== undefined) {
-    return { kind: 'inverse', predicate: inverse };
+
+  // A sequence path is an RDF list of paths.
+  const members = lists[term.value];
+  if (members !== undefined) {
+    const paths = members.map((member) => parsePath(store, lists, member));
+    return paths.every((path): path is PropertyPath => path !== undefined) && paths.length > 0
+      ? { kind: 'sequence', paths }
+      : undefined;
   }
-  const oneOrMore = singleNamedNodeValue(store, term, sh.oneOrMorePath);
-  if (oneOrMore !== undefined) {
-    return { kind: 'oneOrMore', predicate: oneOrMore };
+
+  for (const [predicate, kind] of UNARY_PATHS) {
+    const [inner] = objects(store, term, predicate);
+    if (inner !== undefined) {
+      const path = parsePath(store, lists, inner);
+      return path === undefined ? undefined : { kind, path };
+    }
   }
+
+  const [alternatives] = objects(store, term, sh.alternativePath);
+  if (alternatives !== undefined) {
+    const alternativeMembers = lists[alternatives.value];
+    if (alternativeMembers === undefined) {
+      return undefined;
+    }
+    const paths = alternativeMembers.map((member) => parsePath(store, lists, member));
+    return paths.every((path): path is PropertyPath => path !== undefined) && paths.length > 0
+      ? { kind: 'alternative', paths }
+      : undefined;
+  }
+
   return undefined;
 }
 
@@ -275,7 +294,7 @@ function parseProperty(store: Store, lists: Lists, term: Term, seen: Set<string>
   seen.delete(term.value);
   return {
     ...parseBody(store, lists, term, seen),
-    path: parsePath(store, objects(store, term, sh.path)[0]),
+    path: parsePath(store, lists, objects(store, term, sh.path)[0]),
     minCount: integerValue(store, term, sh.minCount),
     maxCount: integerValue(store, term, sh.maxCount),
     qualifiedValueShape,

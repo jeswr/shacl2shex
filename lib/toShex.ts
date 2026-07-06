@@ -24,9 +24,19 @@ import type {
   NodeConstraint, Schema, Shape, ShapeDecl, TripleConstraint, shapeExpr, shapeExprOrRef, valueSetValue,
 } from 'shexj';
 import type {
-  ShaclNodeShape, ShaclProperty, ShaclSchema, ShaclShapeBody,
+  PropertyPath, ShaclNodeShape, ShaclProperty, ShaclSchema, ShaclShapeBody,
 } from './model';
 import { rdfType } from './vocab';
+
+/** Shared emission context. */
+interface Context {
+  /** Class IRI -> id of the shape that targets it (for `sh:class`). */
+  targetShapes: Map<string, string>;
+  /** Synthesized helper declarations (recursive path encodings). */
+  helperDecls: ShapeDecl[];
+  /** Mints deterministic ids for synthesized helper shapes. */
+  nextGeneratedId: () => string;
+}
 
 /**
  * SHACL node kinds mapped onto ShEx node kinds. The two SHACL union kinds
@@ -65,6 +75,134 @@ function negatedNodeKind(kind: ShaclShapeBody['nodeKind']): shapeExpr | undefine
     return { type: 'ShapeNot', shapeExpr: { type: 'NodeConstraint', nodeKind: 'iri' } };
   }
   return undefined;
+}
+
+/** A single path arc: one predicate, forward or inverse. */
+interface PathStep {
+  predicate: string;
+  inverse: boolean;
+}
+
+/**
+ * Normalizes a property path: inverses are pushed inwards (`^(p1/p2)` becomes
+ * `^p2/^p1`, `^^p` becomes `p`, `^(p1|p2)` becomes `^p1|^p2`) and nested
+ * sequences/alternatives are flattened, so that emission only has to deal
+ * with steps and one level of composition.
+ */
+function normalizePath(path: PropertyPath): PropertyPath {
+  switch (path.kind) {
+    case 'predicate':
+      return path;
+    case 'inverse': {
+      const inner = normalizePath(path.path);
+      switch (inner.kind) {
+        case 'predicate':
+          return { kind: 'inverse', path: inner };
+        case 'inverse':
+          return inner.path;
+        case 'sequence':
+          return normalizePath({
+            kind: 'sequence',
+            paths: [...inner.paths].reverse().map((member): PropertyPath => ({ kind: 'inverse', path: member })),
+          });
+        case 'alternative':
+          return normalizePath({
+            kind: 'alternative',
+            paths: inner.paths.map((member): PropertyPath => ({ kind: 'inverse', path: member })),
+          });
+        default:
+          return { kind: inner.kind, path: normalizePath({ kind: 'inverse', path: inner.path }) };
+      }
+    }
+    case 'sequence': {
+      const paths = path.paths
+        .map(normalizePath)
+        .flatMap((member) => (member.kind === 'sequence' ? member.paths : [member]));
+      return paths.length === 1 ? paths[0] : { kind: 'sequence', paths };
+    }
+    case 'alternative': {
+      const paths = path.paths
+        .map(normalizePath)
+        .flatMap((member) => (member.kind === 'alternative' ? member.paths : [member]));
+      return paths.length === 1 ? paths[0] : { kind: 'alternative', paths };
+    }
+    default:
+      return { kind: path.kind, path: normalizePath(path.path) };
+  }
+}
+
+/** The single arc a (normalized) path denotes, if it denotes one. */
+function asStep(path: PropertyPath): PathStep | undefined {
+  if (path.kind === 'predicate') {
+    return { predicate: path.predicate, inverse: false };
+  }
+  if (path.kind === 'inverse' && path.path.kind === 'predicate') {
+    return { predicate: path.path.predicate, inverse: true };
+  }
+  return undefined;
+}
+
+/** A triple constraint over one path step. */
+function stepConstraint(
+  step: PathStep,
+  valueExpr: shapeExprOrRef | undefined,
+  min: number,
+  max: number,
+): TripleConstraint {
+  const constraint: TripleConstraint = {
+    type: 'TripleConstraint', predicate: step.predicate, min, max,
+  };
+  if (step.inverse) {
+    constraint.inverse = true;
+  }
+  // The writer requires the valueExpr key to be absent (not undefined) for an
+  // unconstrained `.` value.
+  if (valueExpr !== undefined) {
+    constraint.valueExpr = valueExpr;
+  }
+  return constraint;
+}
+
+/**
+ * The existential EXTRA idiom over one step: at least one arc has a
+ * conforming value, other arcs stay unconstrained. (Unmatched inbound arcs
+ * never violate a shape, so inverse steps need no EXTRA.)
+ */
+function extraShape(step: PathStep, valueExpr: shapeExprOrRef | undefined): Shape {
+  const constraint = stepConstraint(step, valueExpr, 1, -1);
+  if (step.inverse) {
+    return { type: 'Shape', expression: constraint };
+  }
+  return { type: 'Shape', extra: [step.predicate], expression: constraint };
+}
+
+/**
+ * Whether a shape expression contains negation anywhere; recursive helper
+ * declarations must stay negation-free to keep the schema stratified.
+ */
+function containsNegation(expr: shapeExprOrRef | undefined): boolean {
+  if (expr === undefined || typeof expr === 'string') {
+    return false;
+  }
+  switch (expr.type) {
+    case 'ShapeNot':
+      return true;
+    case 'ShapeAnd':
+    case 'ShapeOr':
+      return expr.shapeExprs.some(containsNegation);
+    case 'Shape': {
+      const { expression } = expr;
+      if (typeof expression === 'object') {
+        const children = expression.type === 'TripleConstraint' ? [expression] : expression.expressions;
+        return children.some((child) => typeof child === 'object'
+          && child.type === 'TripleConstraint'
+          && containsNegation(child.valueExpr));
+      }
+      return false;
+    }
+    default:
+      return false;
+  }
 }
 
 /** A nested shape requiring `rdf:type` to be one of `classes` (for `sh:class`). */
@@ -169,7 +307,7 @@ interface ExprResult {
  * ShEx shape-expression conjuncts. Also emits the warnings for inexpressible
  * components (`body.unsupported`).
  */
-function bodyParts(body: ShaclShapeBody, targetShapes: Map<string, string>, options: BodyOptions): PartsResult {
+function bodyParts(body: ShaclShapeBody, ctx: Context, options: BodyOptions): PartsResult {
   let exact = true;
   const parts: shapeExprOrRef[] = [];
   const constraint: NodeConstraint = { type: 'NodeConstraint' };
@@ -291,7 +429,7 @@ function bodyParts(body: ShaclShapeBody, targetShapes: Map<string, string>, opti
     // that neither form applies rdfs:subClassOf* entailment, and the nested
     // form does not accept multi-typed nodes (both documented in the README),
     // so the conversion is not exact.
-    const targetShape = body.classes.length === 1 ? targetShapes.get(body.classes[0]) : undefined;
+    const targetShape = body.classes.length === 1 ? ctx.targetShapes.get(body.classes[0]) : undefined;
     parts.push(targetShape ?? classShape(body.classes));
     exact = false;
   }
@@ -304,7 +442,7 @@ function bodyParts(body: ShaclShapeBody, targetShapes: Map<string, string>, opti
   // skipped (dropping one operand would strengthen the constraint).
   for (const operands of body.ors) {
     // eslint-disable-next-line no-use-before-define
-    const converted = operands.map((operand) => operandExpr(operand, targetShapes));
+    const converted = operands.map((operand) => operandExpr(operand, ctx));
     const exprs = converted
       .map((result) => result.expr)
       .filter((expr): expr is shapeExprOrRef => expr !== undefined);
@@ -320,7 +458,7 @@ function bodyParts(body: ShaclShapeBody, targetShapes: Map<string, string>, opti
   // sh:and: an unconvertible operand may be dropped (a sound weakening).
   for (const operands of body.ands) {
     // eslint-disable-next-line no-use-before-define
-    const converted = operands.map((operand) => operandExpr(operand, targetShapes));
+    const converted = operands.map((operand) => operandExpr(operand, ctx));
     const exprs = converted
       .map((result) => result.expr)
       .filter((expr): expr is shapeExprOrRef => expr !== undefined);
@@ -340,7 +478,7 @@ function bodyParts(body: ShaclShapeBody, targetShapes: Map<string, string>, opti
   // a plain disjunction (exclusivity is not enforced).
   for (const operands of body.xones) {
     // eslint-disable-next-line no-use-before-define
-    const converted = operands.map((operand) => operandExpr(operand, targetShapes));
+    const converted = operands.map((operand) => operandExpr(operand, ctx));
     const exprs = converted
       .map((result) => result.expr)
       .filter((expr): expr is shapeExprOrRef => expr !== undefined);
@@ -358,7 +496,7 @@ function bodyParts(body: ShaclShapeBody, targetShapes: Map<string, string>, opti
   // (negated references risk unstratified negation).
   for (const operand of body.nots) {
     // eslint-disable-next-line no-use-before-define
-    const converted = operandExpr(operand, targetShapes);
+    const converted = operandExpr(operand, ctx);
     const references: string[] = [];
     // eslint-disable-next-line no-use-before-define
     collectReferences(converted.expr, references);
@@ -413,67 +551,191 @@ function hasValueConjunct(predicate: string, inverse: boolean, value: Term, diag
   return { type: 'Shape', extra: [predicate], expression: constraint };
 }
 
+/** The result of converting a property shape's path + value constraint. */
+interface PathConversion {
+  constraints: TripleConstraint[];
+  conjuncts: shapeExprOrRef[];
+  exact: boolean;
+}
+
 /**
- * Builds the triple constraint for a property shape. `valueExpr` may be
- * `undefined` (an unconstrained `.`), e.g. for a property shape carrying only
- * cardinality constraints.
+ * Builds the triple constraints (and shape-level conjuncts) that encode the
+ * property shape's (normalized) `sh:path` together with its value constraint
+ * and cardinalities.
+ *
+ * Cardinality over composite paths deserves care: SHACL counts DISTINCT nodes
+ * reachable via the whole path, while ShEx counts triples matched by one
+ * predicate — so `sh:maxCount` (and `sh:minCount > 1`) over
+ * sequence/alternative/star paths is inexpressible and skipped with a
+ * warning. `sh:minCount 1` is the salvageable existential fragment (via the
+ * EXTRA/OneOf idioms), and universal value constraints transfer via nested or
+ * recursive shapes.
  */
-function tripleConstraint(
+function pathTripleExprs(
   property: ShaclProperty,
+  path: PropertyPath | undefined,
   valueExpr: shapeExprOrRef | undefined,
-): TripleConstraint | undefined {
-  const { path } = property;
+  ctx: Context,
+): PathConversion | undefined {
   const min = property.minCount ?? 0;
   const max = property.maxCount ?? -1;
+  const boundedCounts = property.maxCount !== undefined || min > 1;
 
-  // The writer requires the valueExpr key to be absent (not undefined) for an
-  // unconstrained `.` value.
-  const valueExprField = valueExpr === undefined ? {} : { valueExpr };
+  if (path !== undefined) {
+    const step = asStep(path);
+    if (step !== undefined) {
+      return { constraints: [stepConstraint(step, valueExpr, min, max)], conjuncts: [], exact: true };
+    }
 
-  switch (path?.kind) {
-    case 'predicate':
-      return {
-        type: 'TripleConstraint', predicate: path.predicate, ...valueExprField, min, max,
-      };
-    case 'inverse':
-      return {
-        type: 'TripleConstraint', predicate: path.predicate, inverse: true, ...valueExprField, min, max,
-      };
-    case 'oneOrMore':
-      if (valueExpr === undefined) {
-        // Cardinality-only: sh:minCount over p+ is equivalent to a count of
-        // direct p arcs when the bound is at most one.
-        if (max === -1 && min <= 1) {
-          return {
-            type: 'TripleConstraint', predicate: path.predicate, min, max,
-          };
+    switch (path.kind) {
+      case 'oneOrMore': {
+        const inner = asStep(path.path);
+        if (inner === undefined) {
+          break;
         }
-        console.warn('Skipping inexpressible cardinality over sh:oneOrMorePath on', property.term);
-        return undefined;
-      }
-      // Approximated as `predicate (value | shape-that-repeats-the-path)`.
-      return {
-        type: 'TripleConstraint',
-        predicate: path.predicate,
-        valueExpr: {
-          type: 'ShapeOr',
-          shapeExprs: [
-            {
-              type: 'Shape',
-              expression: {
-                type: 'TripleConstraint', predicate: path.predicate, valueExpr, min, max,
-              },
-            },
-            valueExpr,
+        if (valueExpr === undefined) {
+          // Cardinality-only: sh:minCount over p+ is equivalent to a count of
+          // direct p arcs when the bound is at most one.
+          if (max === -1 && min <= 1) {
+            return { constraints: [stepConstraint(inner, undefined, min, max)], conjuncts: [], exact: true };
+          }
+          console.warn('Skipping inexpressible cardinality over sh:oneOrMorePath on', property.term);
+          return undefined;
+        }
+        // Approximated as `predicate (value | shape-that-repeats-the-path)`,
+        // kept from the original implementation.
+        const repeated: Shape = { type: 'Shape', expression: stepConstraint(inner, valueExpr, min, max) };
+        return {
+          constraints: [
+            stepConstraint(inner, { type: 'ShapeOr', shapeExprs: [repeated, valueExpr] }, min, max),
           ],
-        },
-        min,
-        max,
-      };
-    default:
-      console.warn('Unsupported sh:path on property', property.term);
-      return undefined;
+          conjuncts: [],
+          exact: false,
+        };
+      }
+
+      case 'zeroOrMore': {
+        const inner = asStep(path.path);
+        if (inner === undefined) {
+          break;
+        }
+        if (boundedCounts) {
+          console.warn('Skipping inexpressible cardinality over sh:zeroOrMorePath on', property.term);
+          return undefined;
+        }
+        if (valueExpr === undefined) {
+          // minCount <= 1 over p* is vacuous: the focus node is always a
+          // value node of the path.
+          return { constraints: [], conjuncts: [], exact: true };
+        }
+        if (containsNegation(valueExpr)) {
+          console.warn('Skipping sh:zeroOrMorePath whose value constraint contains negation'
+            + ' (the recursive encoding must stay stratified) on', property.term);
+          return undefined;
+        }
+        // Exact recursive encoding: <S> = V AND { p @<S> * }; the focus
+        // conforming to <S> is equivalent to every p*-reachable node
+        // satisfying V (ShEx recursion is coinductive, so cycles conform,
+        // matching SHACL's reachable-set semantics).
+        const id = ctx.nextGeneratedId();
+        ctx.helperDecls.push({
+          id,
+          type: 'ShapeDecl',
+          shapeExpr: {
+            type: 'ShapeAnd',
+            shapeExprs: [valueExpr, { type: 'Shape', expression: stepConstraint(inner, id, 0, -1) }],
+          },
+        });
+        return { constraints: [], conjuncts: [id], exact: true };
+      }
+
+      case 'zeroOrOne': {
+        const inner = asStep(path.path);
+        if (inner === undefined) {
+          break;
+        }
+        if (boundedCounts) {
+          console.warn('Skipping inexpressible cardinality over sh:zeroOrOnePath on', property.term);
+          return undefined;
+        }
+        if (valueExpr === undefined) {
+          return { constraints: [], conjuncts: [], exact: true };
+        }
+        // Value nodes are the focus plus its direct p-values: V is hoisted
+        // onto the enclosing shape and also constrains every p arc.
+        return { constraints: [stepConstraint(inner, valueExpr, 0, -1)], conjuncts: [valueExpr], exact: true };
+      }
+
+      case 'sequence': {
+        const steps = path.paths.map(asStep);
+        if (!steps.every((member): member is PathStep => member !== undefined)) {
+          break;
+        }
+        if (boundedCounts) {
+          console.warn('Skipping inexpressible cardinality over a sequence sh:path on', property.term);
+          return undefined;
+        }
+        const constraints: TripleConstraint[] = [];
+        const conjuncts: shapeExprOrRef[] = [];
+        if (valueExpr !== undefined) {
+          // Universal fragment: every node reachable via the whole path
+          // satisfies V, encoded by nesting shapes right-to-left.
+          let value: shapeExprOrRef = valueExpr;
+          for (let i = steps.length - 1; i > 0; i -= 1) {
+            value = { type: 'Shape', expression: stepConstraint(steps[i], value, 0, -1) };
+          }
+          constraints.push(stepConstraint(steps[0], value, 0, -1));
+        }
+        if (min === 1) {
+          // Existence (minCount 1): some end node exists, via nested EXTRA
+          // shapes (distinct-counting collapses at one).
+          let value: shapeExprOrRef | undefined = valueExpr;
+          for (let i = steps.length - 1; i > 0; i -= 1) {
+            value = extraShape(steps[i], value);
+          }
+          conjuncts.push(extraShape(steps[0], value));
+        }
+        return { constraints, conjuncts, exact: true };
+      }
+
+      case 'alternative': {
+        const steps = path.paths.map(asStep);
+        if (!steps.every((member): member is PathStep => member !== undefined)) {
+          break;
+        }
+        if (boundedCounts) {
+          console.warn('Skipping inexpressible cardinality over sh:alternativePath on', property.term);
+          return undefined;
+        }
+        const constraints = valueExpr === undefined
+          ? []
+          : steps.map((member) => stepConstraint(member, valueExpr, 0, -1));
+        const conjuncts: shapeExprOrRef[] = [];
+        if (min === 1) {
+          // Existence: one of the alternatives has a conforming value.
+          const conjunct: Shape = {
+            type: 'Shape',
+            expression: {
+              type: 'OneOf',
+              expressions: steps.map((member) => stepConstraint(member, valueExpr, 1, -1)),
+            },
+          };
+          const forward = steps.filter((member) => !member.inverse).map((member) => member.predicate);
+          if (forward.length > 0) {
+            conjunct.extra = forward;
+          }
+          conjuncts.push(conjunct);
+        }
+        return { constraints, conjuncts, exact: true };
+      }
+
+      default:
+        break;
+    }
   }
+
+  console.warn('Unsupported sh:path on property', property.term);
+  return undefined;
 }
 
 /** The result of converting one property shape. */
@@ -495,7 +757,7 @@ interface PropertyConversion {
  * Converts one property shape, or returns `undefined` when nothing about it
  * can be represented (in which case it is skipped with a warning).
  */
-function convertProperty(property: ShaclProperty, targetShapes: Map<string, string>): PropertyConversion | undefined {
+function convertProperty(property: ShaclProperty, ctx: Context): PropertyConversion | undefined {
   // A deactivated shape validates nothing.
   if (property.deactivated) {
     return {
@@ -503,7 +765,7 @@ function convertProperty(property: ShaclProperty, targetShapes: Map<string, stri
     };
   }
 
-  const { parts, exact: partsExact } = bodyParts(property, targetShapes, {
+  const { parts, exact: partsExact } = bodyParts(property, ctx, {
     focusConstraints: true,
     hasValuesAsSelf: false,
   });
@@ -512,17 +774,19 @@ function convertProperty(property: ShaclProperty, targetShapes: Map<string, stri
   const conjuncts: shapeExprOrRef[] = [];
   const mentions: string[] = [];
 
+  const path = property.path === undefined ? undefined : normalizePath(property.path);
+  const step = path === undefined ? undefined : asStep(path);
+
   // sh:hasValue: at least one value equals v; other values stay unconstrained
   // thanks to EXTRA, so this must not live inside the main EachOf.
   if (property.hasValues.length > 0) {
-    const { path } = property;
-    if (path?.kind === 'predicate' || path?.kind === 'inverse') {
+    if (step !== undefined) {
       for (const value of property.hasValues) {
-        const conjunct = hasValueConjunct(path.predicate, path.kind === 'inverse', value, property.term);
+        const conjunct = hasValueConjunct(step.predicate, step.inverse, value, property.term);
         if (conjunct !== undefined) {
           conjuncts.push(conjunct);
-          if (path.kind === 'predicate') {
-            mentions.push(path.predicate);
+          if (!step.inverse) {
+            mentions.push(step.predicate);
           }
         } else {
           exact = false;
@@ -540,18 +804,17 @@ function convertProperty(property: ShaclProperty, targetShapes: Map<string, stri
     || property.qualifiedMinCount !== undefined
     || property.qualifiedMaxCount !== undefined;
   if (hasQualified) {
-    const { path } = property;
     if (property.qualifiedValueShape === undefined) {
       console.warn('Skipping qualified cardinality without sh:qualifiedValueShape on', property.term);
       exact = false;
-    } else if (path?.kind !== 'predicate' && path?.kind !== 'inverse') {
+    } else if (step === undefined) {
       console.warn('Skipping sh:qualifiedValueShape over an unsupported sh:path on', property.term);
       exact = false;
     } else {
       const qualified: ExprResult = typeof property.qualifiedValueShape === 'string'
         ? { expr: property.qualifiedValueShape, exact: true }
         // eslint-disable-next-line no-use-before-define
-        : operandExpr(property.qualifiedValueShape, targetShapes);
+        : operandExpr(property.qualifiedValueShape, ctx);
       if (qualified.expr === undefined) {
         console.warn('Skipping unconvertible sh:qualifiedValueShape on', property.term);
         exact = false;
@@ -565,28 +828,21 @@ function convertProperty(property: ShaclProperty, targetShapes: Map<string, stri
           console.warn('sh:qualifiedMaxCount is approximate under ShEx EXTRA semantics on', property.term);
           exact = false;
         }
-        const constraint: TripleConstraint = {
-          type: 'TripleConstraint',
-          predicate: path.predicate,
-          valueExpr: qualified.expr,
-          min: property.qualifiedMinCount ?? 0,
-          max: property.qualifiedMaxCount ?? -1,
-        };
-        if (path.kind === 'inverse') {
-          constraint.inverse = true;
+        const constraint = stepConstraint(
+          step,
+          qualified.expr,
+          property.qualifiedMinCount ?? 0,
+          property.qualifiedMaxCount ?? -1,
+        );
+        if (step.inverse) {
           // Unmatched inbound arcs never violate a shape: no EXTRA needed.
           conjuncts.push({ type: 'Shape', expression: constraint });
         } else {
-          conjuncts.push({ type: 'Shape', extra: [path.predicate], expression: constraint });
-          mentions.push(path.predicate);
+          conjuncts.push({ type: 'Shape', extra: [step.predicate], expression: constraint });
+          mentions.push(step.predicate);
         }
       }
     }
-  }
-
-  // The one-level unrolling of sh:oneOrMorePath is an approximation.
-  if (property.path?.kind === 'oneOrMore') {
-    exact = false;
   }
 
   const hasExplicitCounts = property.minCount !== undefined || property.maxCount !== undefined;
@@ -600,8 +856,8 @@ function convertProperty(property: ShaclProperty, targetShapes: Map<string, stri
     return undefined;
   }
 
-  const constraint = tripleConstraint(property, valueExpr);
-  if (constraint === undefined) {
+  const main = pathTripleExprs(property, path, valueExpr, ctx);
+  if (main === undefined) {
     if (conjuncts.length === 0) {
       return undefined;
     }
@@ -609,8 +865,9 @@ function convertProperty(property: ShaclProperty, targetShapes: Map<string, stri
       constraints: [], conjuncts, mentions, exact: false,
     };
   }
+  conjuncts.push(...main.conjuncts);
   return {
-    constraints: [constraint], conjuncts, mentions, exact,
+    constraints: main.constraints, conjuncts, mentions, exact: exact && main.exact,
   };
 }
 
@@ -676,7 +933,7 @@ function mergeSamePredicate(constraints: TripleConstraint[]): TripleConstraint[]
  * `sh:xone`, `sh:not`) into a shape expression. Operands may be property
  * shapes (`sh:path` present) or nested node shapes.
  */
-function operandExpr(operand: ShaclProperty, targetShapes: Map<string, string>): ExprResult {
+function operandExpr(operand: ShaclProperty, ctx: Context): ExprResult {
   // A deactivated operand places no constraints: it converts to the empty
   // shape, which every node matches.
   if (operand.deactivated) {
@@ -684,7 +941,7 @@ function operandExpr(operand: ShaclProperty, targetShapes: Map<string, string>):
   }
 
   if (operand.path !== undefined) {
-    const conversion = convertProperty(operand, targetShapes);
+    const conversion = convertProperty(operand, ctx);
     if (conversion === undefined) {
       return { exact: false };
     }
@@ -696,7 +953,7 @@ function operandExpr(operand: ShaclProperty, targetShapes: Map<string, string>):
     return { expr: combineParts(parts), exact: conversion.exact };
   }
 
-  const { parts, exact: partsExact } = bodyParts(operand, targetShapes, {
+  const { parts, exact: partsExact } = bodyParts(operand, ctx, {
     focusConstraints: true,
     hasValuesAsSelf: true,
   });
@@ -705,7 +962,7 @@ function operandExpr(operand: ShaclProperty, targetShapes: Map<string, string>):
   // Nested sh:property shapes on a node-shape operand.
   const constraints: TripleConstraint[] = [];
   for (const property of operand.properties) {
-    const conversion = convertProperty(property, targetShapes);
+    const conversion = convertProperty(property, ctx);
     if (conversion === undefined) {
       exact = false;
     } else {
@@ -731,7 +988,7 @@ function operandExpr(operand: ShaclProperty, targetShapes: Map<string, string>):
  * Converts one node shape into a `ShapeDecl`, or returns `undefined` when the
  * shape has no representable constraints at all.
  */
-function nodeShapeDecl(shape: ShaclNodeShape, targetShapes: Map<string, string>): ShapeDecl | undefined {
+function nodeShapeDecl(shape: ShaclNodeShape, ctx: Context): ShapeDecl | undefined {
   // A deactivated shape conforms for every node: declare it as the empty
   // shape so that inbound references remain valid (its ShapeMap entries are
   // suppressed separately).
@@ -743,12 +1000,13 @@ function nodeShapeDecl(shape: ShaclNodeShape, targetShapes: Map<string, string>)
   const conjuncts: shapeExprOrRef[] = [];
   const mentions = new Set<string>();
   for (const property of shape.properties) {
-    const conversion = convertProperty(property, targetShapes);
+    const conversion = convertProperty(property, ctx);
+    const normalized = property.path === undefined ? undefined : normalizePath(property.path);
     if (conversion === undefined) {
       // Under CLOSED, SHACL still allows the (predicate) paths of skipped
       // property shapes, so they must stay mentioned.
-      if (shape.closed && property.path?.kind === 'predicate') {
-        mentions.add(property.path.predicate);
+      if (shape.closed && normalized?.kind === 'predicate') {
+        mentions.add(normalized.predicate);
       }
     } else {
       expressions.push(...conversion.constraints);
@@ -757,9 +1015,10 @@ function nodeShapeDecl(shape: ShaclNodeShape, targetShapes: Map<string, string>)
         mentions.add(mention);
       }
     }
-    if (shape.closed && property.path?.kind === 'oneOrMore') {
+    if (shape.closed && normalized !== undefined
+      && asStep(normalized) === undefined && normalized.kind !== 'zeroOrMore') {
       // SHACL's CLOSED allow-list only contains plain predicate paths; the
-      // emitted constraint mentions the inner predicate, which is weaker.
+      // emitted constraints mention the leading predicates, which is weaker.
       console.warn('sh:closed combined with a non-predicate sh:path is approximate on', property.term);
     }
   }
@@ -797,7 +1056,7 @@ function nodeShapeDecl(shape: ShaclNodeShape, targetShapes: Map<string, string>)
 
   // Node-shape-level value constraints (sh:datatype, facets, sh:in,
   // sh:hasValue, sh:node, logical components, ...) constrain the focus node.
-  const nodeLevel = bodyParts(shape, targetShapes, { focusConstraints: false, hasValuesAsSelf: true });
+  const nodeLevel = bodyParts(shape, ctx, { focusConstraints: false, hasValuesAsSelf: true });
 
   const nodeKind = shape.nodeKind && NODE_KINDS[shape.nodeKind];
   const negatedKind = negatedNodeKind(shape.nodeKind);
@@ -931,9 +1190,22 @@ export function shexSchemaFromShacl(schema: ShaclSchema): Schema {
 
   const decls: ShapeDecl[] = [];
   for (const shape of schema.shapes) {
-    const decl = nodeShapeDecl(shape, targetShapes);
+    // Helper declarations (recursive path encodings) get deterministic ids
+    // derived from the shape they belong to, so output is stable.
+    const helperDecls: ShapeDecl[] = [];
+    let generated = 0;
+    const ctx: Context = {
+      targetShapes,
+      helperDecls,
+      nextGeneratedId: () => {
+        const id = `${shape.id}__path_gen${generated}`;
+        generated += 1;
+        return id;
+      },
+    };
+    const decl = nodeShapeDecl(shape, ctx);
     if (decl !== undefined) {
-      decls.push(decl);
+      decls.push(decl, ...helperDecls);
     }
   }
 

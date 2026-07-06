@@ -11,6 +11,7 @@ const shacl = 'http://www.w3.org/ns/shacl#';
 
 export const sh = {
   NodeShape: `${shacl}NodeShape`,
+  alternativePath: `${shacl}alternativePath`,
   and: `${shacl}and`,
   class: `${shacl}class`,
   closed: `${shacl}closed`,
@@ -52,6 +53,8 @@ export const sh = {
   targetSubjectsOf: `${shacl}targetSubjectsOf`,
   uniqueLang: `${shacl}uniqueLang`,
   xone: `${shacl}xone`,
+  zeroOrMorePath: `${shacl}zeroOrMorePath`,
+  zeroOrOnePath: `${shacl}zeroOrOnePath`,
   // Node kinds
   IRI: `${shacl}IRI`,
   Literal: `${shacl}Literal`,

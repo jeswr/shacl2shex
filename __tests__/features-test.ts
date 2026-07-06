@@ -627,6 +627,224 @@ describe('sh:qualifiedValueShape', () => {
   });
 });
 
+describe('property paths', () => {
+  it('normalizes a double inverse to a plain predicate', async () => {
+    const schema = await shaclStoreToShexSchema(storeFromTurtle(`
+      ex:S a sh:NodeShape; sh:property [
+        sh:path [ sh:inversePath [ sh:inversePath ex:p ] ]; sh:nodeKind sh:IRI ].
+    `));
+    const shape = schema.shapes![0].shapeExpr as Shape;
+    const eachOf = shape.expression as { expressions: TripleConstraint[] };
+    expect(eachOf.expressions[0]).toEqual({
+      type: 'TripleConstraint',
+      predicate: 'http://example.org/p',
+      min: 0,
+      max: -1,
+      valueExpr: { type: 'NodeConstraint', nodeKind: 'iri' },
+    });
+  });
+
+  it('converts a sequence path with a universal value constraint via nested shapes', async () => {
+    const schema = await shaclStoreToShexSchema(storeFromTurtle(`
+      ex:S a sh:NodeShape; sh:property [ sh:path (ex:a ex:b); sh:datatype xsd:string ].
+    `));
+    const shape = schema.shapes![0].shapeExpr as Shape;
+    const eachOf = shape.expression as { expressions: TripleConstraint[] };
+    expect(eachOf.expressions[0]).toEqual({
+      type: 'TripleConstraint',
+      predicate: 'http://example.org/a',
+      min: 0,
+      max: -1,
+      valueExpr: {
+        type: 'Shape',
+        expression: {
+          type: 'TripleConstraint',
+          predicate: 'http://example.org/b',
+          min: 0,
+          max: -1,
+          valueExpr: { type: 'NodeConstraint', datatype: 'http://www.w3.org/2001/XMLSchema#string' },
+        },
+      },
+    });
+  });
+
+  it('adds an EXTRA existence conjunct for a sequence path with sh:minCount 1', async () => {
+    const schema = await shaclStoreToShexSchema(storeFromTurtle(`
+      ex:S a sh:NodeShape; sh:property [ sh:path (ex:a ex:b); sh:nodeKind sh:IRI; sh:minCount 1 ].
+    `));
+    const decl = schema.shapes![0].shapeExpr as ShapeAnd;
+    expect(decl.type).toEqual('ShapeAnd');
+    const [, existence] = decl.shapeExprs as [Shape, Shape];
+    expect(existence).toEqual({
+      type: 'Shape',
+      extra: ['http://example.org/a'],
+      expression: {
+        type: 'TripleConstraint',
+        predicate: 'http://example.org/a',
+        min: 1,
+        max: -1,
+        valueExpr: {
+          type: 'Shape',
+          extra: ['http://example.org/b'],
+          expression: {
+            type: 'TripleConstraint',
+            predicate: 'http://example.org/b',
+            min: 1,
+            max: -1,
+            valueExpr: { type: 'NodeConstraint', nodeKind: 'iri' },
+          },
+        },
+      },
+    });
+  });
+
+  it('warns and skips sh:maxCount over a sequence path (distinct-node counting)', async () => {
+    const schema = await shaclStoreToShexSchema(storeFromTurtle(`
+      ex:S a sh:NodeShape;
+        sh:property [ sh:path (ex:a ex:b); sh:nodeKind sh:IRI; sh:maxCount 2 ];
+        sh:property [ sh:path ex:q; sh:nodeKind sh:IRI ].
+    `));
+    const shape = schema.shapes![0].shapeExpr as Shape;
+    const eachOf = shape.expression as { expressions: TripleConstraint[] };
+    expect(eachOf.expressions.map((constraint) => constraint.predicate)).toEqual(['http://example.org/q']);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('cardinality'), expect.anything());
+  });
+
+  it('pushes inversion inside a sequence (inverse of sequence = reversed inverses)', async () => {
+    const schema = await shaclStoreToShexSchema(storeFromTurtle(`
+      ex:S a sh:NodeShape; sh:property [
+        sh:path [ sh:inversePath (ex:a ex:b) ]; sh:nodeKind sh:IRI ].
+    `));
+    const shape = schema.shapes![0].shapeExpr as Shape;
+    const eachOf = shape.expression as { expressions: TripleConstraint[] };
+    expect(eachOf.expressions[0]).toEqual({
+      type: 'TripleConstraint',
+      predicate: 'http://example.org/b',
+      inverse: true,
+      min: 0,
+      max: -1,
+      valueExpr: {
+        type: 'Shape',
+        expression: {
+          type: 'TripleConstraint',
+          predicate: 'http://example.org/a',
+          inverse: true,
+          min: 0,
+          max: -1,
+          valueExpr: { type: 'NodeConstraint', nodeKind: 'iri' },
+        },
+      },
+    });
+  });
+
+  it('converts an alternative path universally as one constraint per branch', async () => {
+    const schema = await shaclStoreToShexSchema(storeFromTurtle(`
+      ex:S a sh:NodeShape; sh:property [
+        sh:path [ sh:alternativePath (ex:a ex:b) ]; sh:datatype xsd:string ].
+    `));
+    const shape = schema.shapes![0].shapeExpr as Shape;
+    const eachOf = shape.expression as { expressions: TripleConstraint[] };
+    expect(eachOf.expressions).toEqual([
+      {
+        type: 'TripleConstraint',
+        predicate: 'http://example.org/a',
+        min: 0,
+        max: -1,
+        valueExpr: { type: 'NodeConstraint', datatype: 'http://www.w3.org/2001/XMLSchema#string' },
+      },
+      {
+        type: 'TripleConstraint',
+        predicate: 'http://example.org/b',
+        min: 0,
+        max: -1,
+        valueExpr: { type: 'NodeConstraint', datatype: 'http://www.w3.org/2001/XMLSchema#string' },
+      },
+    ]);
+  });
+
+  it('encodes alternative-path existence with a OneOf inside an EXTRA shape', async () => {
+    const schema = await shaclStoreToShexSchema(storeFromTurtle(`
+      ex:S a sh:NodeShape; sh:property [
+        sh:path [ sh:alternativePath (ex:a ex:b) ]; sh:minCount 1 ].
+    `));
+    expect(schema.shapes![0].shapeExpr).toEqual({
+      type: 'Shape',
+      extra: ['http://example.org/a', 'http://example.org/b'],
+      expression: {
+        type: 'OneOf',
+        expressions: [
+          {
+            type: 'TripleConstraint', predicate: 'http://example.org/a', min: 1, max: -1,
+          },
+          {
+            type: 'TripleConstraint', predicate: 'http://example.org/b', min: 1, max: -1,
+          },
+        ],
+      },
+    });
+    const shexc = await writeShexSchema(schema, { ex: 'http://example.org/' });
+    expect(shexc).toContain('|');
+  });
+
+  it('encodes sh:zeroOrMorePath universally via a recursive helper shape', async () => {
+    const schema = await shaclStoreToShexSchema(storeFromTurtle(`
+      ex:S a sh:NodeShape; sh:property [
+        sh:path [ sh:zeroOrMorePath ex:p ]; sh:nodeKind sh:IRI ].
+    `));
+    const helperId = 'http://example.org/S__path_gen0';
+    expect(schema.shapes!.map((decl) => decl.id)).toEqual(['http://example.org/S', helperId]);
+    expect(schema.shapes![0].shapeExpr).toEqual(helperId);
+    expect(schema.shapes![1].shapeExpr).toEqual({
+      type: 'ShapeAnd',
+      shapeExprs: [
+        { type: 'NodeConstraint', nodeKind: 'iri' },
+        {
+          type: 'Shape',
+          expression: {
+            type: 'TripleConstraint',
+            predicate: 'http://example.org/p',
+            min: 0,
+            max: -1,
+            valueExpr: helperId,
+          },
+        },
+      ],
+    });
+    await expect(writeShexSchema(schema, { ex: 'http://example.org/' })).resolves.toBeDefined();
+  });
+
+  it('warns and skips sh:zeroOrMorePath with bounded cardinality', async () => {
+    const schema = await shaclStoreToShexSchema(storeFromTurtle(`
+      ex:S a sh:NodeShape;
+        sh:property [ sh:path [ sh:zeroOrMorePath ex:p ]; sh:nodeKind sh:IRI; sh:maxCount 3 ];
+        sh:property [ sh:path ex:q; sh:nodeKind sh:IRI ].
+    `));
+    const shape = schema.shapes![0].shapeExpr as Shape;
+    const eachOf = shape.expression as { expressions: TripleConstraint[] };
+    expect(eachOf.expressions.map((constraint) => constraint.predicate)).toEqual(['http://example.org/q']);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('cardinality'), expect.anything());
+  });
+
+  it('converts sh:zeroOrOnePath by constraining the focus node and the direct values', async () => {
+    const schema = await shaclStoreToShexSchema(storeFromTurtle(`
+      ex:S a sh:NodeShape; sh:property [
+        sh:path [ sh:zeroOrOnePath ex:p ]; sh:datatype xsd:string ].
+    `));
+    const decl = schema.shapes![0].shapeExpr as ShapeAnd;
+    expect(decl.type).toEqual('ShapeAnd');
+    const [main, hoisted] = decl.shapeExprs as [Shape, unknown];
+    const eachOf = main.expression as { expressions: TripleConstraint[] };
+    expect(eachOf.expressions[0]).toEqual({
+      type: 'TripleConstraint',
+      predicate: 'http://example.org/p',
+      min: 0,
+      max: -1,
+      valueExpr: { type: 'NodeConstraint', datatype: 'http://www.w3.org/2001/XMLSchema#string' },
+    });
+    expect(hoisted).toEqual({ type: 'NodeConstraint', datatype: 'http://www.w3.org/2001/XMLSchema#string' });
+  });
+});
+
 describe('property shapes sharing a predicate', () => {
   it('merges them into one triple constraint (EachOf partitioning is weaker)', async () => {
     const schema = await shaclStoreToShexSchema(storeFromTurtle(`

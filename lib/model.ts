@@ -18,18 +18,28 @@ export type ShaclNodeKind =
   | 'BlankNodeOrLiteral';
 
 /**
- * The property paths this converter understands.
+ * A parsed SHACL property path.
  *
- * Paths that cannot be reduced to these forms are treated as unsupported: the
- * enclosing property shape is skipped with a warning at emission time.
+ * Emission normalizes paths (inverses are pushed inwards, nested
+ * sequences/alternatives are flattened) and converts the fragments that ShEx
+ * can express; paths (or path/cardinality combinations) that cannot be
+ * reduced are skipped with a warning.
  */
 export type PropertyPath =
   /** A plain predicate path. */
   | { kind: 'predicate'; predicate: string }
-  /** `sh:inversePath` over a plain predicate. */
-  | { kind: 'inverse'; predicate: string }
-  /** `sh:oneOrMorePath` over a plain predicate. */
-  | { kind: 'oneOrMore'; predicate: string };
+  /** `sh:inversePath`. */
+  | { kind: 'inverse'; path: PropertyPath }
+  /** A sequence path (an RDF list of paths). */
+  | { kind: 'sequence'; paths: PropertyPath[] }
+  /** `sh:alternativePath` over an RDF list of paths. */
+  | { kind: 'alternative'; paths: PropertyPath[] }
+  /** `sh:zeroOrMorePath`. */
+  | { kind: 'zeroOrMore'; path: PropertyPath }
+  /** `sh:oneOrMorePath`. */
+  | { kind: 'oneOrMore'; path: PropertyPath }
+  /** `sh:zeroOrOnePath`. */
+  | { kind: 'zeroOrOne'; path: PropertyPath };
 
 /**
  * Constraint parameters shared by node shapes, property shapes and the
