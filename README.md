@@ -33,16 +33,21 @@ the ShEx semantics allow. Anything it cannot express is **skipped with a
 `console.warn`** naming the shape/property, never a crash; the rest of the shape
 still converts.
 
+Three legacy approximations are additionally kept for output compatibility with
+earlier releases (see the `sh:in`, `sh:node` and `sh:oneOrMorePath` rows below).
+Of these, only the `sh:in` widening warns at runtime — the other two are
+applied **silently**.
+
 | SHACL | ShEx mapping | Fidelity |
 |---|---|---|
 | `sh:minCount` / `sh:maxCount` | `TripleConstraint` min/max (absent → `0`/`*`) | exact for predicate & inverse paths |
 | `sh:datatype` | `NodeConstraint` datatype | exact (several values: first wins, warns) |
 | `sh:nodeKind` (all six kinds) | `IRI`/`LITERAL`/`BNODE`/`NONLITERAL`; `sh:IRIOrLiteral` → `NOT BNODE`, `sh:BlankNodeOrLiteral` → `NOT IRI` | exact |
 | `sh:class` | reference to the shape whose `sh:targetClass` (or implicit class target) matches, else a nested `{ a [<classes>] }` shape | best-effort: **no `rdfs:subClassOf*` entailment**, and the nested form expects exactly one `rdf:type` arc, so multi-typed nodes fail it |
-| `sh:node` | shape reference(s); several values conjoin via `AND` | bounded by the referenced shape's conversion |
+| `sh:node` | shape reference(s); several values conjoin via `AND` | bounded by the referenced shape's conversion; legacy behaviour kept: a lone `sh:node` alongside a bare `sh:nodeKind` (and no other value constraint) emits only the reference — the node kind is dropped **silently** (no runtime warning) |
 | `sh:in` | value set (`[...]`); language-tagged members keep their tag | exact, except: blank-node members warn-and-drop, and with an explicit `sh:datatype` the legacy behaviour of widening to the bare datatype constraint is kept (warned) |
 | `sh:hasValue` | `EXTRA <p>` + `<p> [v] +` conjunct shape | exact |
-| `sh:pattern` + `sh:flags` | `/pattern/flags` string facet | exact (both use XPath `fn:matches`) |
+| `sh:pattern` + `sh:flags` | `/pattern/flags` string facet | exact (both use XPath `fn:matches`); in the emitted ShExC, regex class escapes (`\d`, `\w`, `\s`, `\p{...}`) are re-encoded as UCHARs (`\d` becomes `\u005Cd`) because the ShExC `REGEXP` grammar forbids them — conformant parsers decode them back to the original pattern |
 | `sh:minLength` / `sh:maxLength` | `MINLENGTH` / `MAXLENGTH` | exact |
 | `sh:minInclusive` etc. (4 range components) | numeric facets | exact for numeric operands; temporal/string/boolean operands warn-and-skip (ShEx facets are numbers-only) |
 | `sh:languageIn` | value set of language stems (`[@en~ ...]`, `langMatches` semantics; `"*"` → any tag) | exact |
@@ -65,7 +70,7 @@ Property paths (normalized first: `^^p` → `p`, `^(p1/p2)` → `^p2/^p1`, `^(p1
 | sequence `p1/p2/...` | universal constraints via nested shapes; `minCount 1` via nested `EXTRA` shapes | exact; `maxCount` / `minCount > 1` warn-and-skip (SHACL counts distinct end nodes) |
 | `sh:alternativePath` | universal: one constraint per branch; `minCount 1`: `OneOf` inside an `EXTRA` shape | exact; bounded counts warn-and-skip |
 | `sh:zeroOrMorePath` | recursive helper shape `<S> = V AND { p @<S> * }` (deterministic `<shape>__path_gen<n>` ids) | exact for negation-free universal constraints; bounded counts warn-and-skip |
-| `sh:oneOrMorePath` | historic one-level unrolling `p (V OR { p V })` | **approximation** (depth ≥ 2 chains are not fully checked) |
+| `sh:oneOrMorePath` | historic one-level unrolling `p (V OR { p V })` | **approximation** (depth ≥ 2 chains are not fully checked), applied **silently** at conversion time — only inexpressible bounded cardinalities over the path warn-and-skip |
 | `sh:zeroOrOnePath` | value constraint hoisted onto the focus + universal constraint on direct arcs | exact; `maxCount` warn-and-skip |
 | other nested compositions | — | warn-and-skip |
 
