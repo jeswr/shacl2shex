@@ -6,7 +6,7 @@
 import { DataFactory, Store } from 'n3';
 import { rdf, shacl } from 'rdf-namespaces';
 import { ShapeShapeShapeType } from './ldo/Shacl.shapeTypes';
-import { shapeFromDataset } from './shapeFromDataset';
+import { shapeFromDatasetFactory } from './shapeFromDataset';
 
 const { namedNode, defaultGraph } = DataFactory;
 
@@ -58,6 +58,10 @@ export interface ShapeMap {
 export function shapeMapFromDataset(shapeStore: Store): ShapeMap {
   const entries: ShapeMapEntry[] = [];
 
+  // Create the ShapeShape reader once; the factory sets up the ShEx validator and
+  // copies the store into an LDO dataset, which is too expensive to redo per node shape
+  const nodeShapeData = shapeFromDatasetFactory(ShapeShapeShapeType, shapeStore);
+
   // Find all NodeShapes in the dataset
   for (const { subject: shape } of
     shapeStore.match(null, namedNode(rdf.type), namedNode(shacl.NodeShape), defaultGraph())
@@ -69,7 +73,7 @@ export function shapeMapFromDataset(shapeStore: Store): ShapeMap {
 
     try {
       // Extract shape-level data including targetClass
-      const shapeData = shapeFromDataset(ShapeShapeShapeType, shapeStore, shape);
+      const shapeData = nodeShapeData(shape);
 
       // If the shape has targetClass properties, create ShapeMap entries
       if (shapeData.targetClass && shapeData.targetClass.length > 0) {
