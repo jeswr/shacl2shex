@@ -13,7 +13,7 @@ import { DataFactory, Store } from 'n3';
 import type {
   PropertyPath, ShaclNodeKind, ShaclNodeShape, ShaclProperty, ShaclSchema, ShaclShapeBody,
 } from './model';
-import { rdfType, sh } from './vocab';
+import { rdfType, rdfs, sh } from './vocab';
 
 const { namedNode, defaultGraph } = DataFactory;
 
@@ -301,6 +301,8 @@ function parseProperty(store: Store, lists: Lists, term: Term, seen: Set<string>
     qualifiedMinCount: integerValue(store, term, sh.qualifiedMinCount),
     qualifiedMaxCount: integerValue(store, term, sh.qualifiedMaxCount),
     qualifiedValueShapesDisjoint: booleanValue(store, term, sh.qualifiedValueShapesDisjoint) || undefined,
+    name: literalTerm(store, term, sh.name),
+    description: literalTerm(store, term, sh.description),
   };
 }
 
@@ -320,6 +322,12 @@ export function parseShaclSchema(store: Store): ShaclSchema {
       targetClasses: namedNodeValues(store, subject, sh.targetClass),
       targetSubjectsOf: namedNodeValues(store, subject, sh.targetSubjectsOf),
       targetObjectsOf: namedNodeValues(store, subject, sh.targetObjectsOf),
+      targetNodes: objects(store, subject, sh.targetNode)
+        .filter((node) => node.termType === 'NamedNode' || node.termType === 'Literal'),
+      implicitClassTarget: subject.termType === 'NamedNode'
+        && store.countQuads(subject, namedNode(rdfType), namedNode(rdfs.Class), defaultGraph()) > 0
+        ? true
+        : undefined,
     });
   }
 

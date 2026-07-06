@@ -131,6 +131,10 @@ export interface ShaclProperty extends ShaclShapeBody {
   qualifiedMaxCount?: number;
   /** Whether `sh:qualifiedValueShapesDisjoint true` is asserted. */
   qualifiedValueShapesDisjoint?: boolean;
+  /** `sh:name` (first literal), emitted as an rdfs:label annotation. */
+  name?: Term;
+  /** `sh:description` (first literal), emitted as an rdfs:comment annotation. */
+  description?: Term;
 }
 
 /** A parsed SHACL node shape (an `sh:NodeShape` instance). */
@@ -143,6 +147,10 @@ export interface ShaclNodeShape extends ShaclShapeBody {
   targetSubjectsOf: string[];
   /** `sh:targetObjectsOf` predicate IRIs. */
   targetObjectsOf: string[];
+  /** `sh:targetNode` values (IRIs or literals). */
+  targetNodes: Term[];
+  /** Whether the node shape is also an `rdfs:Class` (the implicit class target). */
+  implicitClassTarget?: boolean;
 }
 
 /** All node shapes parsed from a SHACL document, in store order. */

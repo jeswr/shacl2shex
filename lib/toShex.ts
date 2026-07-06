@@ -21,12 +21,12 @@
  */
 import type { Term } from '@rdfjs/types';
 import type {
-  NodeConstraint, Schema, Shape, ShapeDecl, TripleConstraint, shapeExpr, shapeExprOrRef, valueSetValue,
+  Annotation, NodeConstraint, Schema, Shape, ShapeDecl, TripleConstraint, shapeExpr, shapeExprOrRef, valueSetValue,
 } from 'shexj';
 import type {
   PropertyPath, ShaclNodeShape, ShaclProperty, ShaclSchema, ShaclShapeBody,
 } from './model';
-import { rdfType } from './vocab';
+import { rdfType, rdfs } from './vocab';
 
 /** Shared emission context. */
 interface Context {
@@ -231,6 +231,14 @@ function valueSetValueOf(term: Term): valueSetValue | undefined {
       : { value: term.value, type: term.datatype.value };
   }
   return undefined;
+}
+
+/** An annotation carrying a literal (for `sh:name` / `sh:description`). */
+function annotation(predicate: string, value: Term): Annotation {
+  if (value.termType === 'Literal' && value.language !== '') {
+    return { type: 'Annotation', predicate, object: { value: value.value, language: value.language } };
+  }
+  return { type: 'Annotation', predicate, object: { value: value.value } };
 }
 
 /** Maps the members of an `sh:in` list onto a ShexJ value set. */
@@ -866,6 +874,18 @@ function convertProperty(property: ShaclProperty, ctx: Context): PropertyConvers
     };
   }
   conjuncts.push(...main.conjuncts);
+
+  // Non-validating metadata: sh:name / sh:description become annotations.
+  const annotations = [
+    ...(property.name === undefined ? [] : [annotation(rdfs.label, property.name)]),
+    ...(property.description === undefined ? [] : [annotation(rdfs.comment, property.description)]),
+  ];
+  if (annotations.length > 0) {
+    for (const constraint of main.constraints) {
+      constraint.annotations = annotations;
+    }
+  }
+
   return {
     constraints: main.constraints, conjuncts, mentions, exact: exact && main.exact,
   };
@@ -1185,6 +1205,11 @@ export function shexSchemaFromShacl(schema: ShaclSchema): Schema {
   for (const shape of schema.shapes) {
     for (const targetClass of shape.targetClasses) {
       targetShapes.set(targetClass, shape.id);
+    }
+    // The implicit class target: a node shape that is also an rdfs:Class
+    // targets (and therefore describes) its own instances.
+    if (shape.implicitClassTarget) {
+      targetShapes.set(shape.id, shape.id);
     }
   }
 

@@ -845,6 +845,67 @@ describe('property paths', () => {
   });
 });
 
+describe('targets', () => {
+  it('maps sh:targetNode to fixed-node ShapeMap entries', () => {
+    const store = storeFromTurtle(`
+      ex:S a sh:NodeShape; sh:targetNode ex:me, "42"^^xsd:integer, "hi", "bonjour"@fr.
+    `);
+    expect(shapeMapFromDataset(store).entries).toEqual([
+      { node: '<http://example.org/me>', shape: 'http://example.org/S' },
+      { node: '"42"^^<http://www.w3.org/2001/XMLSchema#integer>', shape: 'http://example.org/S' },
+      { node: '"hi"', shape: 'http://example.org/S' },
+      { node: '"bonjour"@fr', shape: 'http://example.org/S' },
+    ]);
+  });
+
+  it('treats a node shape that is also an rdfs:Class as targeting its instances', async () => {
+    const store = storeFromTurtle(`
+      ex:Person a rdfs:Class, sh:NodeShape;
+        sh:property [ sh:path ex:name; sh:datatype xsd:string ].
+      ex:S a sh:NodeShape;
+        sh:property [ sh:path ex:friend; sh:class ex:Person ].
+    `);
+    expect(shapeMapFromDataset(store).entries).toEqual([
+      { node: 'FOCUS rdf:type <http://example.org/Person>', shape: 'http://example.org/Person' },
+    ]);
+    // ... and sh:class ex:Person resolves to a reference to that shape.
+    const schema = await shaclStoreToShexSchema(store);
+    const decl = schema.shapes!.find((shape) => shape.id === 'http://example.org/S')!;
+    const shape = decl.shapeExpr as Shape;
+    const eachOf = shape.expression as { expressions: TripleConstraint[] };
+    expect(eachOf.expressions[0].valueExpr).toEqual('http://example.org/Person');
+  });
+});
+
+describe('sh:name / sh:description', () => {
+  it('emits them as rdfs:label / rdfs:comment annotations', async () => {
+    const schema = await shaclStoreToShexSchema(storeFromTurtle(`
+      ex:S a sh:NodeShape; sh:property [
+        sh:path ex:p;
+        sh:datatype xsd:string;
+        sh:name "The name";
+        sh:description "What it means"@en
+      ].
+    `));
+    const shape = schema.shapes![0].shapeExpr as Shape;
+    const eachOf = shape.expression as { expressions: TripleConstraint[] };
+    expect(eachOf.expressions[0].annotations).toEqual([
+      {
+        type: 'Annotation',
+        predicate: 'http://www.w3.org/2000/01/rdf-schema#label',
+        object: { value: 'The name' },
+      },
+      {
+        type: 'Annotation',
+        predicate: 'http://www.w3.org/2000/01/rdf-schema#comment',
+        object: { value: 'What it means', language: 'en' },
+      },
+    ]);
+    const shexc = await writeShexSchema(schema, { ex: 'http://example.org/' });
+    expect(shexc).toContain('The name');
+  });
+});
+
 describe('property shapes sharing a predicate', () => {
   it('merges them into one triple constraint (EachOf partitioning is weaker)', async () => {
     const schema = await shaclStoreToShexSchema(storeFromTurtle(`

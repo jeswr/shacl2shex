@@ -7,6 +7,14 @@
 
 export const rdfType = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
 
+const rdfsNs = 'http://www.w3.org/2000/01/rdf-schema#';
+
+export const rdfs = {
+  Class: `${rdfsNs}Class`,
+  comment: `${rdfsNs}comment`,
+  label: `${rdfsNs}label`,
+} as const;
+
 const shacl = 'http://www.w3.org/ns/shacl#';
 
 export const sh = {
@@ -17,6 +25,7 @@ export const sh = {
   closed: `${shacl}closed`,
   datatype: `${shacl}datatype`,
   deactivated: `${shacl}deactivated`,
+  description: `${shacl}description`,
   ignoredProperties: `${shacl}ignoredProperties`,
   disjoint: `${shacl}disjoint`,
   equals: `${shacl}equals`,
@@ -35,6 +44,7 @@ export const sh = {
   minExclusive: `${shacl}minExclusive`,
   minInclusive: `${shacl}minInclusive`,
   minLength: `${shacl}minLength`,
+  name: `${shacl}name`,
   node: `${shacl}node`,
   nodeKind: `${shacl}nodeKind`,
   not: `${shacl}not`,
@@ -49,6 +59,7 @@ export const sh = {
   qualifiedValueShapesDisjoint: `${shacl}qualifiedValueShapesDisjoint`,
   sparql: `${shacl}sparql`,
   targetClass: `${shacl}targetClass`,
+  targetNode: `${shacl}targetNode`,
   targetObjectsOf: `${shacl}targetObjectsOf`,
   targetSubjectsOf: `${shacl}targetSubjectsOf`,
   uniqueLang: `${shacl}uniqueLang`,

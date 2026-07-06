@@ -3,8 +3,26 @@
  * `sh:targetSubjectsOf`, `sh:targetObjectsOf`) that has no ShEx equivalent,
  * as ShapeMap entries (https://shexspec.github.io/shape-map/).
  */
+import type { Term } from '@rdfjs/types';
 import type { Store } from 'n3';
 import { parseShaclSchema } from './parse';
+
+const XSD_STRING = 'http://www.w3.org/2001/XMLSchema#string';
+
+/** A ShapeMap node for an `sh:targetNode` value (an IRI or a literal). */
+function targetNodePattern(node: Term): string {
+  if (node.termType !== 'Literal') {
+    return `<${node.value}>`;
+  }
+  const escaped = node.value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  if (node.language !== '') {
+    return `"${escaped}"@${node.language}`;
+  }
+  if (node.datatype.value !== XSD_STRING) {
+    return `"${escaped}"^^<${node.datatype.value}>`;
+  }
+  return `"${escaped}"`;
+}
 
 /**
  * A ShapeMap entry that associates RDF nodes with shapes for validation.
@@ -38,6 +56,14 @@ export function shapeMapFromDataset(shapeStore: Store): ShapeMap {
     if (!shape.deactivated) {
       for (const targetClass of shape.targetClasses) {
         entries.push({ node: `FOCUS rdf:type <${targetClass}>`, shape: shape.id });
+      }
+      // The implicit class target: a node shape that is also an rdfs:Class
+      // targets its own instances.
+      if (shape.implicitClassTarget) {
+        entries.push({ node: `FOCUS rdf:type <${shape.id}>`, shape: shape.id });
+      }
+      for (const node of shape.targetNodes) {
+        entries.push({ node: targetNodePattern(node), shape: shape.id });
       }
       for (const predicate of shape.targetSubjectsOf) {
         entries.push({ node: `FOCUS <${predicate}> _`, shape: shape.id });
