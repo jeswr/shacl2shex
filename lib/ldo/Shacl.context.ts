@@ -1,25 +1,15 @@
-import { ContextDefinition } from 'jsonld';
-
-/**
- * =============================================================================
- * ShaclContext: JSONLD Context for Shacl
- * =============================================================================
- */
-export const ShaclContext: ContextDefinition = {
+export const ShaclContext = {
   targetClass: {
     '@id': 'http://www.w3.org/ns/shacl#targetClass',
     '@type': '@id',
-    '@container': '@set',
   },
   targetSubjectsOf: {
     '@id': 'http://www.w3.org/ns/shacl#targetSubjectsOf',
     '@type': '@id',
-    '@container': '@set',
   },
   targetObjectsOf: {
     '@id': 'http://www.w3.org/ns/shacl#targetObjectsOf',
     '@type': '@id',
-    '@container': '@set',
   },
   severity: {
     '@id': 'http://www.w3.org/ns/shacl#severity',
@@ -28,7 +18,6 @@ export const ShaclContext: ContextDefinition = {
   class: {
     '@id': 'http://www.w3.org/ns/shacl#class',
     '@type': '@id',
-    '@container': '@set',
   },
   closed: {
     '@id': 'http://www.w3.org/ns/shacl#closed',
@@ -41,22 +30,18 @@ export const ShaclContext: ContextDefinition = {
   disjoint: {
     '@id': 'http://www.w3.org/ns/shacl#disjoint',
     '@type': '@id',
-    '@container': '@set',
   },
   equals: {
     '@id': 'http://www.w3.org/ns/shacl#equals',
     '@type': '@id',
-    '@container': '@set',
   },
   lessThan: {
     '@id': 'http://www.w3.org/ns/shacl#lessThan',
     '@type': '@id',
-    '@container': '@set',
   },
   lessThanOrEquals: {
     '@id': 'http://www.w3.org/ns/shacl#lessThanOrEquals',
     '@type': '@id',
-    '@container': '@set',
   },
   maxCount: {
     '@id': 'http://www.w3.org/ns/shacl#maxCount',
@@ -88,13 +73,8 @@ export const ShaclContext: ContextDefinition = {
   },
   nodeKind: {
     '@id': 'http://www.w3.org/ns/shacl#nodeKind',
+    '@type': '@id',
   },
-  BlankNode: 'http://www.w3.org/ns/shacl#BlankNode',
-  IRI: 'http://www.w3.org/ns/shacl#IRI',
-  Literal: 'http://www.w3.org/ns/shacl#Literal',
-  BlankNodeOrIRI: 'http://www.w3.org/ns/shacl#BlankNodeOrIRI',
-  BlankNodeOrLiteral: 'http://www.w3.org/ns/shacl#BlankNodeOrLiteral',
-  IRIOrLiteral: 'http://www.w3.org/ns/shacl#IRIOrLiteral',
   pattern: {
     '@id': 'http://www.w3.org/ns/shacl#pattern',
     '@type': 'http://www.w3.org/2001/XMLSchema#string',
@@ -118,5 +98,71 @@ export const ShaclContext: ContextDefinition = {
   uniqueLang: {
     '@id': 'http://www.w3.org/ns/shacl#uniqueLang',
     '@type': 'http://www.w3.org/2001/XMLSchema#boolean',
+  },
+  path: {
+    '@id': 'http://www.w3.org/ns/shacl#path',
+    '@type': '@id',
+  },
+  property: {
+    '@id': 'http://www.w3.org/ns/shacl#property',
+    '@type': '@id',
+  },
+  name: {
+    '@id': 'http://www.w3.org/ns/shacl#name',
+  },
+  description: {
+    '@id': 'http://www.w3.org/ns/shacl#description',
+  },
+  defaultValue: {
+    '@id': 'http://www.w3.org/ns/shacl#defaultValue',
+  },
+  group: {
+    '@id': 'http://www.w3.org/ns/shacl#group',
+    '@type': '@id',
+  },
+  order: {
+    '@id': 'http://www.w3.org/ns/shacl#order',
+  },
+  qualifiedValueShape: {
+    '@id': 'http://www.w3.org/ns/shacl#qualifiedValueShape',
+    '@type': '@id',
+  },
+  hasValue: {
+    '@id': 'http://www.w3.org/ns/shacl#hasValue',
+  },
+  in: {
+    '@id': 'http://www.w3.org/ns/shacl#in',
+    '@container': '@list',
+  },
+  languageIn: {
+    '@id': 'http://www.w3.org/ns/shacl#languageIn',
+    '@container': '@list',
+  },
+  node: {
+    '@id': 'http://www.w3.org/ns/shacl#node',
+    '@type': '@id',
+  },
+  ignoredProperties: {
+    '@id': 'http://www.w3.org/ns/shacl#ignoredProperties',
+    '@container': '@list',
+  },
+  and: {
+    '@id': 'http://www.w3.org/ns/shacl#and',
+    '@type': '@id',
+    '@container': '@list',
+  },
+  or: {
+    '@id': 'http://www.w3.org/ns/shacl#or',
+    '@type': '@id',
+    '@container': '@list',
+  },
+  not: {
+    '@id': 'http://www.w3.org/ns/shacl#not',
+    '@type': '@id',
+  },
+  xone: {
+    '@id': 'http://www.w3.org/ns/shacl#xone',
+    '@type': '@id',
+    '@container': '@list',
   },
 };
