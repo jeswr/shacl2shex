@@ -8,7 +8,7 @@ import type {
   TripleConstraint, shapeExprOrRef,
 } from 'shexj';
 import { ShapeShapeShapeType } from './ldo/Shacl.shapeTypes';
-import { shapeFromDataset } from './shapeFromDataset';
+import { shapeFromDatasetFactory } from './shapeFromDataset';
 
 export { shapeMapFromDataset, writeShapeMap } from './shapeMapFromDataset';
 export type { ShapeMap, ShapeMapEntry } from './shapeMapFromDataset';
@@ -35,6 +35,10 @@ function getSingleObjectOfType(
 export async function shaclStoreToShexSchema(shapeStore: Store): Promise<Schema> {
   const shexShapes: ShapeDecl[] = [];
 
+  // Create the ShapeShape reader once; the factory sets up the ShEx validator and
+  // copies the store into an LDO dataset, which is too expensive to redo per property shape
+  const propertyShapeData = shapeFromDatasetFactory(ShapeShapeShapeType, shapeStore);
+
   // First pass: collect all shapes and their target classes for reference resolution
   const shapeTargetMap = new Map<string, string>(); // target class -> shape IRI
   for (const { subject: shape } of
@@ -60,7 +64,7 @@ export async function shaclStoreToShexSchema(shapeStore: Store): Promise<Schema>
         console.warn('Unsupported property', property);
         continue;
       }
-      const shapeData = shapeFromDataset(ShapeShapeShapeType, shapeStore, property);
+      const shapeData = propertyShapeData(property);
       const inValues = shapeStore.getObjects(property, namedNode(shacl.in__workaround), defaultGraph());
       const shapeRef = shapeStore.getObjects(property, namedNode(shacl.node), defaultGraph());
       const path = shapeStore.getObjects(property, namedNode(shacl.path), defaultGraph());
