@@ -1,0 +1,6 @@
+PREFIX ex: <http://example.org/or-test#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+shape ex:PersonShape {
+	ex:name xsd:string|xsd:integer .
+}
