@@ -1,0 +1,44 @@
+PREFIX ex: <http://example.org/test#>
+PREFIX sh: <http://www.w3.org/ns/shacl#>
+
+# Basic node kind shapes to reference
+shape ex:IRIShape ;
+    sh:nodeKind sh:IRI {
+}
+
+shape ex:LiteralShape ;
+    sh:nodeKind sh:Literal {
+}
+
+# Shape that requires both referenced shapes (sh:and)
+shape ex:AndShape ;
+    sh:nodeKind sh:IRI ;
+    sh:and (
+        ex:IRIShape
+        ex:LiteralShape
+    ) {
+}
+
+# Shape that requires at least one (sh:or)
+shape ex:OrShape ;
+    sh:nodeKind sh:IRI ;
+    sh:or (
+        ex:IRIShape
+        ex:LiteralShape
+    ) {
+}
+
+# Shape that forbids the referenced shape (sh:not)
+shape ex:NotShape ;
+    sh:nodeKind sh:IRI ;
+    sh:not ex:IRIShape {
+}
+
+# Shape that requires exactly one (sh:xone) – we approximate with OR in ShEx
+shape ex:XoneShape ;
+    sh:nodeKind sh:IRI ;
+    sh:xone (
+        ex:IRIShape
+        ex:LiteralShape
+    ) {
+}
