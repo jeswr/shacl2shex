@@ -67,6 +67,10 @@
   "jest": {
     "preset": "ts-jest",
     "collectCoverage": true,
+    "coveragePathIgnorePatterns": [
+      "/node_modules/",
+      "/dist/"
+    ],
     "coverageReporters": [
       "json-summary",
       "text",
