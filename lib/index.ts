@@ -232,6 +232,21 @@ export async function shaclStoreToShexSchema(shapeStore: Store): Promise<Schema>
       }
     }
 
+    // Handle shape-level sh:class constraint by requiring an rdf:type of one of the classes,
+    // mirroring the property-level sh:class conversion above
+    const shapeClasses = shapeStore.getObjects(shape, namedNode(shacl.class__workaround), defaultGraph())
+      .filter((cls) => cls.termType === 'NamedNode');
+    if (shapeClasses.length > 0) {
+      eachOf.unshift({
+        type: 'TripleConstraint',
+        predicate: rdf.type,
+        valueExpr: {
+          type: 'NodeConstraint',
+          values: shapeClasses.map((cls) => cls.value),
+        },
+      });
+    }
+
     // Handle shape-level nodeKind constraint
     let shapeNodeKindConstraint;
     if (shapeNodeKind.length === 1 && shapeNodeKind[0].termType === 'NamedNode') {
