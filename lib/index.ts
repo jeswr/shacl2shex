@@ -35,6 +35,10 @@ function getSingleObjectOfType(
 export async function shaclStoreToShexSchema(shapeStore: Store): Promise<Schema> {
   const shexShapes: ShapeDecl[] = [];
 
+  // Extract all RDF lists once up front; extractLists scans the whole store,
+  // so calling it per property shape makes conversion O(shapes * store size)
+  const lists = shapeStore.extractLists();
+
   // First pass: collect all shapes and their target classes for reference resolution
   const shapeTargetMap = new Map<string, string>(); // target class -> shape IRI
   for (const { subject: shape } of
@@ -80,7 +84,7 @@ export async function shaclStoreToShexSchema(shapeStore: Store): Promise<Schema>
         } as const)[shapeData.nodeKind['@id']];
       }
       if (inValues.length === 1) {
-        const list = shapeStore.extractLists()[inValues[0].value];
+        const list = lists[inValues[0].value];
         if (list) {
           const [firstTerm] = list;
 
@@ -220,7 +224,7 @@ export async function shaclStoreToShexSchema(shapeStore: Store): Promise<Schema>
           getSingleObjectOfType(shapeStore, pathElem, namedNode('http://www.w3.org/ns/shacl#oneOrMorePath')),
           getSingleObjectOfType(shapeStore, pathElem, namedNode('http://www.w3.org/ns/shacl#zeroOrOnePath')),
           getSingleObjectOfType(shapeStore, pathElem, namedNode('http://www.w3.org/ns/shacl#inversePath')),
-          shapeStore.extractLists()[pathElem.value],
+          lists[pathElem.value],
         );
 
         throw new Error('Unsupported path');
