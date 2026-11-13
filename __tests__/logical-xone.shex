@@ -1,0 +1,15 @@
+PREFIX ex: <http://example.org/test#>
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+PREFIX sh: <http://www.w3.org/ns/shacl#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+ex:ExclusiveContactShape @ex:EmailOnly AND NOT (@ex:PhoneOnly OR @ex:AddressOnly) OR @ex:PhoneOnly AND NOT (@ex:EmailOnly OR @ex:AddressOnly) OR @ex:AddressOnly AND NOT (@ex:EmailOnly OR @ex:PhoneOnly)
+ex:EmailOnly {
+(    foaf:mbox IRI {1,1})
+}
+ex:PhoneOnly {
+(    foaf:phone xsd:string{1,1})
+}
+ex:AddressOnly {
+(    ex:address xsd:string{1,1})
+}

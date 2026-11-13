@@ -27,8 +27,53 @@ console.log(writeShapeMap(shapeMap, prefixes));
 ```
 
 :warning: This library is hacked together. Unsupported features include:
- - `sh:or`, `sh:and` and `sh:xone`
  - Property paths
+ - Some advanced SHACL features
+
+## Supported Logical Constraints
+
+As of version X.X.X, this library supports SHACL logical constraints with mappings to ShEx operators:
+
+### SHACL to ShEx Mappings
+
+| SHACL Constraint | ShEx Operator | Description |
+|-----------------|---------------|-------------|
+| `sh:and` | `AND` | All shapes must be satisfied (per [SHACL spec §4.6.2](https://www.w3.org/TR/shacl/#AndConstraintComponent)) |
+| `sh:or` | `OR` | At least one shape must be satisfied (per [SHACL spec §4.6.3](https://www.w3.org/TR/shacl/#OrConstraintComponent)) |
+| `sh:not` | `NOT` | The shape must not be satisfied (per [SHACL spec §4.6.1](https://www.w3.org/TR/shacl/#NotConstraintComponent)) |
+| `sh:xone` | Complex expression | Exactly one shape must be satisfied (per [SHACL spec §4.6.4](https://www.w3.org/TR/shacl/#XoneConstraintComponent)) |
+
+### Examples
+
+**SHACL with `sh:and`:**
+```turtle
+ex:PersonShape a sh:NodeShape ;
+  sh:and (ex:NameConstraint ex:AgeConstraint) .
+```
+
+**Converts to ShEx:**
+```shex
+ex:PersonShape @ex:NameConstraint AND @ex:AgeConstraint
+```
+
+**SHACL with `sh:xone` (exactly one):**
+```turtle
+ex:ContactShape a sh:NodeShape ;
+  sh:xone (ex:EmailOnly ex:PhoneOnly ex:AddressOnly) .
+```
+
+**Converts to ShEx (using De Morgan's laws):**
+```shex
+ex:ContactShape @ex:EmailOnly AND NOT (@ex:PhoneOnly OR @ex:AddressOnly) OR 
+                @ex:PhoneOnly AND NOT (@ex:EmailOnly OR @ex:AddressOnly) OR 
+                @ex:AddressOnly AND NOT (@ex:EmailOnly OR @ex:PhoneOnly)
+```
+
+### Implementation Notes
+
+- The implementation follows the SHACL specification for logical constraints ([§4.6](https://www.w3.org/TR/shacl/#core-components-logical))
+- ShEx logical operators are used as defined in the [ShEx specification §5.3](https://shex.io/shex-semantics/#prod-shapeOr)
+- `sh:xone` is implemented using a combination of AND, OR, and NOT operators since ShEx doesn't have a native XOR operator
 
 ## CLI Usage
 

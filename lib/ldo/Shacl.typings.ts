@@ -1,4 +1,4 @@
-import { ContextDefinition } from 'jsonld';
+import type { ContextDefinition } from 'jsonld';
 
 /**
  * =============================================================================
@@ -76,4 +76,8 @@ export interface ShapeShape {
   qualifiedMinCount?: number;
   qualifiedValueShapesDisjoint?: boolean;
   uniqueLang?: boolean;
+  and?: ShapeShape[];
+  or?: ShapeShape[];
+  not?: ShapeShape;
+  xone?: ShapeShape[];
 }

@@ -8,16 +8,16 @@ import {
 } from '../lib';
 
 const files = fs.readdirSync(path.join(__dirname))
-  .filter((file) => file.endsWith('.shaclc') || file.endsWith('.shce'));
+  .filter((file) => file.endsWith('.shaclc') || file.endsWith('.shce') || file.endsWith('.ttl'));
 
 it.each(files)('should convert %s', async (file) => {
   const store = await dereferenceToStore(path.join(__dirname, file), { localFiles: true });
-  const expectedShex = fs.readFileSync(path.join(__dirname, file.replace(/\.(shaclc|shce)$/, '.shex')), 'utf-8');
+  const expectedShex = fs.readFileSync(path.join(__dirname, file.replace(/\.(shaclc|shce|ttl)$/, '.shex')), 'utf-8');
   const shexSchema = await shaclStoreToShexSchema(store.store);
   await expect(writeShexSchema(shexSchema, store.prefixes)).resolves.toEqual(expectedShex);
 
   // Check if there's an expected ShapeMap file
-  const shapeMapPath = path.join(__dirname, file.replace(/\.(shaclc|shce)$/, '.shapemap'));
+  const shapeMapPath = path.join(__dirname, file.replace(/\.(shaclc|shce|ttl)$/, '.shapemap'));
   if (fs.existsSync(shapeMapPath)) {
     const expectedShapeMap = fs.readFileSync(shapeMapPath, 'utf-8');
     const shapeMap = shapeMapFromDataset(store.store);
@@ -46,16 +46,16 @@ it.each(files)('should convert %s via CLI', async (file) => {
     });
 
     // Verify ShEx file was generated and matches expected output
-    const outputShexPath = path.join(tempDir, file.replace(/\.(shaclc|shce)$/, '.shex'));
+    const outputShexPath = path.join(tempDir, file.replace(/\.(shaclc|shce|ttl)$/, '.shex'));
     expect(fs.existsSync(outputPath)).toBe(true);
     const generatedShex = fs.readFileSync(outputPath, 'utf-8');
     const generatedShexAutoNamed = fs.readFileSync(outputShexPath, 'utf-8');
-    const expectedShex = fs.readFileSync(path.join(__dirname, file.replace(/\.(shaclc|shce)$/, '.shex')), 'utf-8');
+    const expectedShex = fs.readFileSync(path.join(__dirname, file.replace(/\.(shaclc|shce|ttl)$/, '.shex')), 'utf-8');
     expect(generatedShex).toEqual(expectedShex);
     expect(generatedShexAutoNamed).toEqual(expectedShex);
 
     // Test CLI with --shapemap flag if expected ShapeMap file exists
-    const shapeMapPath = path.join(__dirname, file.replace(/\.(shaclc|shce)$/, '.shapemap'));
+    const shapeMapPath = path.join(__dirname, file.replace(/\.(shaclc|shce|ttl)$/, '.shapemap'));
     if (fs.existsSync(shapeMapPath)) {
       // Clean up previous output files
       fs.unlinkSync(outputPath);

@@ -1,0 +1,31 @@
+@prefix ex: <http://example.org/test#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+ex:ExclusiveContactShape a sh:NodeShape ;
+  sh:xone (ex:EmailOnly ex:PhoneOnly ex:AddressOnly) .
+
+ex:EmailOnly a sh:NodeShape ;
+  sh:property [
+    sh:path foaf:mbox ;
+    sh:nodeKind sh:IRI ;
+    sh:minCount 1 ;
+    sh:maxCount 1
+  ] .
+
+ex:PhoneOnly a sh:NodeShape ;
+  sh:property [
+    sh:path foaf:phone ;
+    sh:datatype xsd:string ;
+    sh:minCount 1 ;
+    sh:maxCount 1
+  ] .
+
+ex:AddressOnly a sh:NodeShape ;
+  sh:property [
+    sh:path ex:address ;
+    sh:datatype xsd:string ;
+    sh:minCount 1 ;
+    sh:maxCount 1
+  ] .
