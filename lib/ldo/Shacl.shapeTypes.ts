@@ -1,11 +1,12 @@
-import { ShapeType } from '@ldo/ldo';
+import { ShapeShape } from './Shacl.typings';
 import { ShaclSchema } from './Shacl.schema';
 import { ShaclContext } from './Shacl.context';
-import { ShapeShape } from './Shacl.typings';
+import type { ShapeType } from '@ldo/ldo';
+import type { Schema } from 'shexj';
 
 /**
  * =============================================================================
- * LDO ShapeTypes Shacl
+ * LDO ShapeTypes for Shacl
  * =============================================================================
  */
 
@@ -13,7 +14,7 @@ import { ShapeShape } from './Shacl.typings';
  * ShapeShape ShapeType
  */
 export const ShapeShapeShapeType: ShapeType<ShapeShape> = {
-  schema: ShaclSchema,
+  schema: ShaclSchema as Schema,
   shape: 'http://www.w3.org/ns/shacl-shacl#ShapeShape',
-  context: ShaclContext,
+  context: ShaclContext as any,
 };
